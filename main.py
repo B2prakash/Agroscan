@@ -31,6 +31,7 @@ from pathlib import Path
 import httpx
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -321,6 +322,62 @@ async def whatsapp(
     )
 
     return twiml(reply)
+
+
+# ── Chat ──────────────────────────────────────────────────────────────────────
+
+class ChatRequest(BaseModel):
+    message: str
+    language: str = "en"
+    disease_context: str | None = None
+
+
+@app.post("/chat")
+async def chat(req: ChatRequest):
+    """KisanBot — AI farming assistant powered by Groq."""
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="GROQ_API_KEY not configured.")
+
+    try:
+        from groq import Groq
+    except ImportError:
+        raise HTTPException(status_code=503, detail="groq package not installed.")
+
+    system_prompt = (
+        "You are KisanBot, an expert agricultural assistant for Indian farmers. "
+        "You help farmers with crop diseases, pesticides, farming advice, and treatment recommendations. "
+        "When disease context is provided, answer questions specifically about that disease. "
+        "Always be helpful, simple and practical. "
+        "If user writes in Hindi, respond in Hindi. "
+        "If user writes in English, respond in English. "
+        "Keep answers concise and farmer-friendly."
+    )
+
+    messages = [{"role": "system", "content": system_prompt}]
+
+    if req.disease_context:
+        messages.append({
+            "role": "system",
+            "content": f"Current scan context: {req.disease_context}"
+        })
+
+    messages.append({"role": "user", "content": req.message})
+
+    try:
+        client = Groq(api_key=api_key)
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=messages,
+            max_tokens=512,
+            temperature=0.7,
+        )
+        reply = response.choices[0].message.content
+    except Exception as exc:
+        log.exception("Groq chat error")
+        raise HTTPException(status_code=500, detail=f"Chat error: {exc}")
+
+    return {"reply": reply}
 
 
 # ── Dev entry point ───────────────────────────────────────────────────────────

@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgroScan — AI Crop Disease Detector</title>
+<style>
+/* ── Reset ─────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── DARK MODE (default) ───────────────────────────────────────────── */
+:root{
+  --bg:#060e08;--surface:#0d1f10;--surface2:#142918;--border:#1e4025;
+  --accent:#2ecc71;--accent2:#27ae60;--accent3:#1abc9c;
+  --dim:#5a8f67;--text:#d4f5dc;--text-dim:#7aad85;
+  --danger:#e74c3c;--warn:#f39c12;--info:#3498db;
+  --shadow:none;
+  --noise-opacity:.35;
+  --cursor-blend:screen;
+}
+
+/* ── LIGHT MODE overrides ──────────────────────────────────────────── */
+body.light-mode{
+  --bg:#f4faf6;--surface:#ffffff;--surface2:#edf7f1;--border:#c2e8d4;
+  --accent:#1fa85a;--accent2:#178a49;--accent3:#0e9172;
+  --dim:#4a7a5a;--text:#0a2e1a;--text-dim:#4a7a5a;
+  --danger:#c0392b;--warn:#c87d0e;--info:#1f6fa3;
+  --shadow:0 2px 14px rgba(0,0,0,.07);
+  --noise-opacity:.08;
+  --cursor-blend:multiply;
+}
+
+html{scroll-behavior:smooth}
+
+/* global smooth theme transition */
+*,*::before,*::after{
+  transition:background-color .3s,color .3s,border-color .3s,box-shadow .3s;
+}
+/* but keep animation/transform transitions fast */
+*{transition-property:background-color,color,border-color,box-shadow}
+
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;cursor:none;overflow-x:hidden;
+}
+
+/* ── Cursor ────────────────────────────────────────────────────────── */
+#cursor{
+  position:fixed;width:14px;height:14px;background:var(--accent);
+  border-radius:50%;pointer-events:none;z-index:9999;
+  transform:translate(-50%,-50%);mix-blend-mode:var(--cursor-blend);
+  /* override global transition for cursor — needs to be fast */
+  transition:transform .12s ease !important;
+}
+#cursor-ring{
+  position:fixed;width:34px;height:34px;border:1.5px solid var(--accent);
+  border-radius:50%;pointer-events:none;z-index:9998;
+  transform:translate(-50%,-50%);opacity:.45;
+  transition:opacity .2s ease !important;
+}
+
+/* ── Noise ─────────────────────────────────────────────────────────── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  opacity:var(--noise-opacity);
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+}
+
+/* ── Theme toggle button ───────────────────────────────────────────── */
+.theme-btn{
+  width:38px;height:38px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;font-size:1.1rem;
+  display:flex;align-items:center;justify-content:center;
+  cursor:none;flex-shrink:0;
+  /* override global for hover speed */
+  transition:background .2s,border-color .2s,transform .15s !important;
+}
+.theme-btn:hover{transform:scale(1.1)}
+
+/* ── LAYOUT ────────────────────────────────────────────────────────── */
+.page-wrap{
+  max-width:900px;margin:0 auto;
+  padding:0 24px;
+  position:relative;z-index:1;
+}
+@media(max-width:600px){.page-wrap{padding:0 14px}}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+header{
+  padding:26px 0 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.logo-wrap{display:flex;align-items:center;gap:14px}
+.logo-icon{
+  width:48px;height:48px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent3));
+  border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:24px;animation:glow 3s ease-in-out infinite;
+}
+@keyframes glow{0%,100%{box-shadow:0 0 22px rgba(46,204,113,.3)}50%{box-shadow:0 0 44px rgba(46,204,113,.65)}}
+.logo-text h1{
+  font-size:1.7rem;font-weight:800;letter-spacing:-.5px;
+  background:linear-gradient(90deg,var(--accent),var(--accent3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.logo-text p{font-size:.7rem;color:var(--dim);letter-spacing:1.2px;text-transform:uppercase}
+.lang-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.lang-btn{
+  padding:8px 18px;background:transparent;border:none;
+  color:var(--text-dim);font-size:.85rem;font-weight:600;cursor:none;
+  transition:background .2s,color .2s;
+}
+.lang-btn.active{background:var(--accent2);color:#fff}
+
+/* ── Hero ──────────────────────────────────────────────────────────── */
+.hero{text-align:center;padding:48px 0 32px}
+.hero h2{font-size:clamp(1.5rem,3.5vw,2.8rem);font-weight:800;line-height:1.15;margin-bottom:12px}
+.hero h2 span{color:var(--accent)}
+.hero p{color:var(--text-dim);font-size:1rem;max-width:580px;margin:0 auto}
+
+/* ── Results top: 2-col (images | diagnosis) ────────────────────────── */
+.results-top-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-bottom:16px;
+  align-items:start;
+}
+@media(max-width:640px){.results-top-grid{grid-template-columns:1fr}}
+
+/* uploaded image card inside results */
+.orig-img-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:14px;margin-bottom:14px;
+  box-shadow:var(--shadow);
+}
+.orig-img-card .section-title{margin-bottom:10px}
+#result-orig-img{
+  width:100%;max-height:220px;object-fit:contain;
+  border-radius:10px;display:block;
+}
+
+/* standalone always-visible cards */
+.standalone-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;margin-top:20px;overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.standalone-card-header{
+  display:flex;align-items:center;gap:10px;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  background:var(--surface2);
+  font-size:.95rem;font-weight:700;color:var(--accent);cursor:none;
+  user-select:none;
+}
+.standalone-card-header .sc-toggle{margin-left:auto;font-size:.75rem;color:var(--text-dim)}
+.standalone-card-body{padding:22px}
+
+/* ── Upload Zone ───────────────────────────────────────────────────── */
+#drop-zone{
+  border:2px dashed var(--border);border-radius:20px;
+  background:var(--surface);position:relative;overflow:hidden;
+  transition:border-color .25s,background .25s,transform .18s;
+  cursor:none;
+}
+#drop-zone::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0%,rgba(46,204,113,.07) 0%,transparent 70%);
+}
+#drop-zone.drag-over{border-color:var(--accent);background:var(--surface2);transform:scale(1.008)}
+#drop-zone.has-image{border-style:solid;border-color:var(--accent2)}
+
+/* Source tabs inside drop zone */
+.source-selector{
+  display:flex;border-bottom:1px solid var(--border);
+  background:var(--surface2);border-radius:18px 18px 0 0;overflow:hidden;
+}
+.source-tab{
+  flex:1;padding:15px 10px;background:transparent;border:none;
+  color:var(--text-dim);font-size:.9rem;font-weight:600;cursor:none;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  border-bottom:2px solid transparent;
+  transition:background .2s,color .2s;
+}
+.source-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(46,204,113,.07)}
+.source-tab:hover:not(.active){background:rgba(255,255,255,.03);color:var(--text)}
+
+/* Upload panel */
+#upload-panel{padding:36px 28px;text-align:center}
+.drop-icon{font-size:3rem;display:block;margin-bottom:14px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.drop-label{font-size:1.05rem;font-weight:600;margin-bottom:6px}
+.drop-hint{font-size:.84rem;color:var(--text-dim);margin-bottom:20px}
+#file-input{display:none}
+.btn-upload{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 28px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent3));
+  color:#fff;border:none;border-radius:10px;
+  font-size:.93rem;font-weight:700;cursor:none;
+  transition:opacity .2s,transform .15s;
+}
+.btn-upload:hover{opacity:.9;transform:translateY(-1px)}
+
+#preview-wrap{display:none;flex-direction:column;align-items:center;gap:14px;padding:28px}
+#preview-img{max-height:240px;max-width:100%;border-radius:12px;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.preview-name{font-size:.83rem;color:var(--text-dim)}
+.btn-clear{
+  background:none;border:1px solid var(--border);color:var(--text-dim);
+  border-radius:8px;padding:6px 14px;font-size:.8rem;cursor:none;
+  transition:border-color .2s,color .2s;
+}
+.btn-clear:hover{border-color:var(--danger);color:var(--danger)}
+
+/* ── Camera panel (FIX 2) ──────────────────────────────────────────── */
+#camera-panel{padding:20px;display:none}
+.cam-wrapper{position:relative;border-radius:14px;overflow:hidden;background:#000;min-height:260px;display:flex;align-items:center;justify-content:center}
+#camera-video{width:100%;max-height:360px;object-fit:cover;display:block;border-radius:14px}
+#cam-placeholder{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  color:var(--text-dim);padding:40px 20px;text-align:center;
+}
+#cam-placeholder .cam-big{font-size:3.5rem;opacity:.4}
+/* recording pulse ring on video */
+.cam-live-badge{
+  position:absolute;top:12px;left:12px;
+  background:rgba(231,76,60,.85);color:#fff;
+  font-size:.72rem;font-weight:700;letter-spacing:.5px;
+  padding:4px 10px;border-radius:20px;
+  display:none;align-items:center;gap:5px;
+}
+.cam-live-badge .live-dot{width:7px;height:7px;background:#fff;border-radius:50%;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.cam-controls{display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap}
+.btn-cam{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:12px 24px;border:none;border-radius:10px;
+  font-size:.9rem;font-weight:700;cursor:none;
+  transition:opacity .2s,transform .15s;
+}
+.btn-cam:hover{opacity:.88;transform:translateY(-1px)}
+#btn-start-cam  {background:linear-gradient(135deg,var(--info),#2980b9);color:#fff}
+#btn-capture    {background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;display:none}
+#btn-stop-cam   {background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);display:none}
+
+.cam-tip{font-size:.78rem;color:var(--text-dim);text-align:center;margin-top:8px}
+
+#cam-captured-wrap{display:none;flex-direction:column;align-items:center;gap:12px;margin-top:16px}
+#cam-captured-img{max-height:200px;max-width:100%;border-radius:12px;box-shadow:0 6px 28px rgba(0,0,0,.5)}
+
+#capture-canvas{display:none}
+
+/* ── Analyze btn ───────────────────────────────────────────────────── */
+#analyze-btn{
+  display:block;width:100%;margin-top:16px;padding:16px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent3));
+  color:#fff;border:none;border-radius:14px;
+  font-size:1.05rem;font-weight:700;cursor:none;letter-spacing:.3px;
+  transition:opacity .2s,transform .15s,box-shadow .2s;
+  box-shadow:0 4px 24px rgba(46,204,113,.22);
+}
+#analyze-btn:not(:disabled):hover{opacity:.9;transform:translateY(-2px);box-shadow:0 8px 36px rgba(46,204,113,.4)}
+#analyze-btn:disabled{opacity:.35}
+.spinner{
+  display:inline-block;width:17px;height:17px;
+  border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;
+  border-radius:50%;animation:spin .7s linear infinite;
+  vertical-align:middle;margin-right:7px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Results full-width below upload ──────────────────────────────── */
+#results{
+  display:none;margin-top:20px;
+  animation:fade-up .45s ease both;
+}
+@keyframes fade-up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+.result-header{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:22px 26px;margin-bottom:16px;
+  display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;
+  box-shadow:var(--shadow);
+}
+.disease-name{font-size:1.45rem;font-weight:800;color:var(--accent);margin-bottom:3px}
+.disease-class{font-size:.75rem;color:var(--text-dim);letter-spacing:.5px;text-transform:uppercase}
+.severity-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 13px;border-radius:20px;
+  font-size:.78rem;font-weight:700;text-transform:uppercase;white-space:nowrap;
+}
+.sev-none  {background:rgba(46,204,113,.15);color:var(--accent);border:1px solid rgba(46,204,113,.3)}
+.sev-low   {background:rgba(243,156,18,.15); color:var(--warn);  border:1px solid rgba(243,156,18,.3)}
+.sev-medium{background:rgba(230,126,34,.15); color:#e67e22;      border:1px solid rgba(230,126,34,.3)}
+.sev-high  {background:rgba(231,76,60,.15);  color:var(--danger);border:1px solid rgba(231,76,60,.3)}
+
+.conf-wrap{margin-top:14px}
+.conf-label{display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-dim);margin-bottom:7px}
+.conf-value{font-weight:700;color:var(--accent)}
+.conf-bar-bg{background:var(--surface2);border-radius:8px;height:10px;overflow:hidden}
+.conf-bar-fill{
+  height:100%;border-radius:8px;
+  background:linear-gradient(90deg,var(--accent2),var(--accent3));
+  width:0%;transition:width 1.2s cubic-bezier(.22,1,.36,1);position:relative;
+}
+.conf-bar-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18))}
+
+/* Grad-CAM */
+.gradcam-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+.section-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+#gradcam-img{width:100%;max-height:300px;object-fit:contain;border-radius:10px;display:block}
+.gradcam-legend{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text-dim)}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+
+/* ── Advisory Tabs ─────────────────────────────────────────────────── */
+.advisory-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow)}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface2);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{
+  flex-shrink:0;padding:12px 16px;background:transparent;border:none;
+  color:var(--text-dim);font-size:.78rem;font-weight:600;cursor:none;
+  border-bottom:2px solid transparent;text-align:center;white-space:nowrap;
+  transition:color .2s,background .2s;
+}
+.tab-btn .tab-icon{display:block;font-size:1.05rem;margin-bottom:2px}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(46,204,113,.06)}
+.tab-btn:hover:not(.active){color:var(--text);background:rgba(255,255,255,.03)}
+.tab-content{display:none;padding:22px}
+.tab-content.active{display:block;animation:fade-in .28s ease}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+.tab-content>p{line-height:1.78;color:var(--text);font-size:.93rem}
+
+/* ── Harvest Calendar ──────────────────────────────────────────────── */
+.harvest-form{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.harvest-form label{font-size:.78rem;color:var(--text-dim);display:block;margin-bottom:5px;font-weight:600}
+.h-field{flex:1;min-width:150px}
+.harvest-form select,.harvest-form input[type="date"]{
+  background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);font-size:.9rem;padding:10px 13px;width:100%;
+  cursor:none;outline:none;transition:border-color .2s;
+  -webkit-appearance:none;appearance:none;
+}
+.harvest-form select:focus,.harvest-form input[type="date"]:focus{border-color:var(--accent)}
+.btn-calc{
+  align-self:flex-end;padding:10px 22px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent3));
+  color:#fff;border:none;border-radius:9px;
+  font-size:.88rem;font-weight:700;cursor:none;
+  transition:opacity .2s,transform .15s;white-space:nowrap;
+}
+.btn-calc:hover{opacity:.88;transform:translateY(-1px)}
+
+#harvest-result{display:none;animation:fade-in .3s ease}
+.harvest-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.h-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.h-card .h-icon{font-size:1.7rem;display:block;margin-bottom:6px}
+.h-card .h-val{font-size:1.1rem;font-weight:800;color:var(--accent);line-height:1.3}
+.h-card .h-lbl{font-size:.7rem;color:var(--text-dim);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+.h-card.urgent .h-val{color:var(--danger)}
+.h-card.warn   .h-val{color:var(--warn)}
+
+.harvest-info h4{font-size:.78rem;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 8px}
+.harvest-info ul{list-style:none;padding:0}
+.harvest-info ul li{display:flex;gap:8px;font-size:.87rem;color:var(--text);line-height:1.65;padding:2px 0}
+.harvest-info ul li::before{content:'→';color:var(--accent);flex-shrink:0}
+
+/* ── Indoor Guide ──────────────────────────────────────────────────── */
+.indoor-placeholder{text-align:center;padding:20px;color:var(--text-dim);font-size:.9rem}
+.indoor-crop-name{font-size:1.05rem;font-weight:700;color:var(--accent);margin-bottom:16px}
+.indoor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin-bottom:18px}
+.in-stat{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:14px 10px;text-align:center}
+.in-stat .in-icon{font-size:1.4rem;display:block;margin-bottom:5px}
+.in-stat .in-val{font-size:.9rem;font-weight:700;color:var(--accent)}
+.in-stat .in-lbl{font-size:.67rem;color:var(--text-dim);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.dos-donts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:520px){.dos-donts{grid-template-columns:1fr}}
+.dos-donts h4{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+.dos-box h4{color:var(--accent)}
+.donts-box h4{color:var(--danger)}
+/* ── Indoor crop selector ─────────────────────────────────────────── */
+#indoor-crop-selector{padding:16px 20px 12px;border-bottom:1px solid var(--border)}
+.indoor-selector-hint{font-size:.82rem;color:var(--text-dim);margin:0 0 10px}
+#indoor-btns{display:flex;flex-wrap:wrap;gap:6px}
+#indoor-btns .btn-calc{font-size:.78rem;padding:6px 11px;align-self:auto}
+#indoor-btns .btn-calc.ibtn-active{
+  background:var(--accent);color:#000;border:2px solid var(--accent2);font-weight:800;
+  transform:translateY(-1px);box-shadow:0 2px 8px rgba(46,204,113,.35)
+}
+@media(max-width:480px){#indoor-btns .btn-calc{font-size:.72rem;padding:5px 8px}}
+.indoor-clear-btn{
+  margin-left:8px;font-size:.75rem;padding:3px 9px;border-radius:8px;
+  background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.4);
+  color:#e74c3c;cursor:none;font-weight:600;vertical-align:middle
+}
+.indoor-clear-btn:hover{background:rgba(231,76,60,.25)}
+#indoor-body.standalone-card-body{padding:0}
+#indoor-content{padding:18px 22px}
+.dos-donts ul{list-style:none;padding:0}
+.dos-donts ul li{font-size:.84rem;color:var(--text);line-height:1.65;padding:2px 0;display:flex;gap:6px}
+.dos-box   ul li::before{content:'✓';color:var(--accent);flex-shrink:0}
+.donts-box ul li::before{content:'✕';color:var(--danger);flex-shrink:0}
+
+/* ── Action Row (KVK / Mandi / Share) ─────────────────────────────── */
+.action-row{
+  display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;
+}
+.btn-action{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:11px 18px;border:none;border-radius:11px;
+  font-size:.85rem;font-weight:700;cursor:none;
+  transition:opacity .2s,transform .15s;white-space:nowrap;flex:1;min-width:150px;
+  justify-content:center;
+}
+.btn-action:hover{opacity:.86;transform:translateY(-1px)}
+.btn-kvk   {background:linear-gradient(135deg,#8e44ad,#6c3483);color:#fff}
+.btn-mandi {background:linear-gradient(135deg,#d35400,#a04000);color:#fff}
+.btn-share {background:linear-gradient(135deg,#25d366,#1a9e4a);color:#fff}
+
+/* ── What to Buy card ──────────────────────────────────────────────── */
+.wtb-card{
+  background:linear-gradient(135deg,#0d1f10,#142918);
+  border:1px solid rgba(46,204,113,.28);
+  border-radius:16px;padding:22px 24px;margin-bottom:16px;
+}
+.wtb-header{
+  display:flex;align-items:center;gap:8px;
+  font-size:1rem;font-weight:800;color:var(--accent);margin-bottom:16px;
+}
+.wtb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+@media(max-width:480px){.wtb-grid{grid-template-columns:1fr}}
+.wtb-item{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:13px 14px;
+}
+.wtb-item .wtb-lbl{font-size:.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.wtb-item .wtb-val{font-size:.9rem;color:var(--text);font-weight:600;line-height:1.5}
+.wtb-store{
+  display:flex;align-items:center;gap:8px;
+  font-size:.83rem;color:var(--text-dim);margin-bottom:14px;
+}
+.wtb-store .store-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0}
+.wtb-helpline{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.22);
+  border-radius:10px;padding:12px 15px;margin-bottom:14px;flex-wrap:wrap;gap:8px;
+}
+.helpline-icon{font-size:1.4rem}
+.helpline-text strong{display:block;font-size:.95rem;color:var(--accent);font-weight:800}
+.helpline-text span{font-size:.78rem;color:var(--text-dim)}
+
+/* ── WhatsApp CTA ──────────────────────────────────────────────────── */
+.whatsapp-cta{
+  background:linear-gradient(135deg,#0a1f0c,#112b14);
+  border:1px solid rgba(37,211,102,.25);border-radius:16px;
+  padding:24px;margin-bottom:30px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:18px;flex-wrap:wrap;
+}
+.wa-left{display:flex;align-items:center;gap:14px}
+.wa-icon{
+  width:50px;height:50px;background:#25d366;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;
+  box-shadow:0 0 20px rgba(37,211,102,.4);
+}
+.wa-text h3{font-size:.96rem;font-weight:700;margin-bottom:4px}
+.wa-text p{font-size:.81rem;color:var(--text-dim);line-height:1.5}
+.btn-wa{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:11px 22px;background:#25d366;color:#fff;
+  border:none;border-radius:10px;font-size:.88rem;font-weight:700;
+  cursor:none;text-decoration:none;white-space:nowrap;
+  transition:background .2s,transform .15s;
+}
+.btn-wa:hover{background:#1ebe57;transform:translateY(-1px)}
+
+/* ── Toast ─────────────────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:26px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:#1e0a0a;border:1px solid var(--danger);color:#ff8a80;
+  padding:11px 22px;border-radius:10px;font-size:.86rem;font-weight:500;
+  z-index:9997;transition:transform .35s cubic-bezier(.22,1,.36,1),opacity .35s;
+  opacity:0;pointer-events:none;max-width:92vw;text-align:center;
+}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── Footer ────────────────────────────────────────────────────────── */
+footer{border-top:1px solid var(--border);padding:22px 0;text-align:center;color:var(--text-dim);font-size:.78rem;line-height:1.9}
+footer span{color:var(--accent)}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Mobile ────────────────────────────────────────────────────────── */
+@media(max-width:600px){
+  header{flex-wrap:wrap;gap:12px}
+  .result-header{grid-template-columns:1fr}
+  .whatsapp-cta{flex-direction:column;align-items:flex-start}
+  .action-row{flex-direction:column}
+  .btn-action{min-width:unset;width:100%}
+  body{cursor:auto}
+  #cursor,#cursor-ring{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div id="toast"></div>
+<canvas id="capture-canvas"></canvas>
+
+<div class="page-wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-wrap">
+      <div class="logo-icon">🌿</div>
+      <div class="logo-text">
+        <h1>AgroScan</h1>
+        <p>AI Crop Disease Detector</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
+      <div class="lang-toggle">
+        <button class="lang-btn active" data-lang="en" onclick="setLang('en')">EN</button>
+        <button class="lang-btn"        data-lang="hi" onclick="setLang('hi')">हि</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h2 data-en="Detect Crop Disease <span>Instantly</span>"
+        data-hi="फसल रोग तुरंत <span>पहचानें</span>">
+      Detect Crop Disease <span>Instantly</span>
+    </h2>
+    <p data-en="Upload a leaf photo or use live camera scan. Get AI-powered disease diagnosis, Grad-CAM heatmap, and farming advice in seconds."
+       data-hi="पत्ते की फोटो अपलोड करें या लाइव कैमरा स्कैन करें। सेकंडों में AI निदान, Grad-CAM हीटमैप और कृषि सलाह पाएं।">
+      Upload a leaf photo or use live camera scan. Get AI-powered disease diagnosis, Grad-CAM heatmap, and farming advice in seconds.
+    </p>
+  </div>
+
+  <!-- ══════════════ UPLOAD ZONE — full width ══════════════ -->
+  <div id="drop-zone"
+       ondragover="handleDragOver(event)"
+       ondragleave="handleDragLeave(event)"
+       ondrop="handleDrop(event)">
+
+    <div class="source-selector">
+      <button class="source-tab active" id="src-upload" onclick="switchSource('upload')">
+        🖼️ <span data-en="Upload Photo" data-hi="फोटो अपलोड करें">Upload Photo</span>
+      </button>
+      <button class="source-tab" id="src-camera" onclick="switchSource('camera')">
+        📷 <span data-en="Scan Live" data-hi="लाइव स्कैन">Scan Live</span>
+      </button>
+    </div>
+
+    <!-- Upload panel -->
+    <div id="upload-panel" onclick="handleUploadClick()">
+      <div id="drop-default">
+        <span class="drop-icon">🍃</span>
+        <p class="drop-label" data-en="Drag &amp; Drop a leaf image here"
+           data-hi="यहाँ पत्ते की छवि खींचें और छोड़ें">Drag &amp; Drop a leaf image here</p>
+        <p class="drop-hint" data-en="or click to browse — JPG, PNG, WEBP"
+           data-hi="या क्लिक करके चुनें — JPG, PNG, WEBP">or click to browse — JPG, PNG, WEBP</p>
+        <button class="btn-upload" onclick="event.stopPropagation();document.getElementById('file-input').click()">
+          📁 <span data-en="Choose Image" data-hi="छवि चुनें">Choose Image</span>
+        </button>
+      </div>
+      <div id="preview-wrap">
+        <img id="preview-img" src="" alt="Preview" />
+        <p class="preview-name" id="preview-name"></p>
+        <button class="btn-clear" onclick="event.stopPropagation();clearUpload()"
+                data-en="✕ Remove" data-hi="✕ हटाएं">✕ Remove</button>
+      </div>
+      <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)" />
+    </div>
+
+    <!-- Camera panel -->
+    <div id="camera-panel">
+      <div class="cam-wrapper">
+        <div id="cam-placeholder">
+          <div class="cam-big">📷</div>
+          <p data-en="Starting camera…" data-hi="कैमरा शुरू हो रहा है…">Starting camera…</p>
+        </div>
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div class="cam-live-badge" id="cam-live-badge">
+          <span class="live-dot"></span> LIVE
+        </div>
+      </div>
+      <div class="cam-controls">
+        <button class="btn-cam" id="btn-capture" onclick="captureFrame()">
+          ⚡ <span data-en="Capture &amp; Analyze" data-hi="कैप्चर और विश्लेषण">Capture &amp; Analyze</span>
+        </button>
+        <button class="btn-cam" id="btn-stop-cam" onclick="stopCamera()">
+          ⏹ <span data-en="Stop Camera" data-hi="कैमरा बंद करें">Stop Camera</span>
+        </button>
+      </div>
+      <p class="cam-tip" data-en="Hold the leaf steady in bright light, then tap Capture &amp; Analyze."
+         data-hi="पत्ते को तेज रोशनी में स्थिर रखें, फिर Capture &amp; Analyze दबाएं।">
+        Hold the leaf steady in bright light, then tap Capture &amp; Analyze.
+      </p>
+      <div id="cam-captured-wrap">
+        <img id="cam-captured-img" src="" alt="Captured" />
+        <p class="preview-name" data-en="📸 Frame captured — analyzing…" data-hi="📸 फ्रेम कैप्चर — विश्लेषण हो रहा है…">📸 Frame captured — analyzing…</p>
+      </div>
+    </div>
+
+  </div><!-- /drop-zone -->
+
+  <button id="analyze-btn" disabled onclick="analyze()"
+          data-en="🔬 Analyze Leaf" data-hi="🔬 पत्ते का विश्लेषण करें">
+    🔬 Analyze Leaf
+  </button>
+
+  <!-- ══════════════ RESULTS — full width, hidden until analysis ══════════════ -->
+  <div id="results">
+
+    <!-- Top 2-col: LEFT=images, RIGHT=diagnosis+WTB -->
+    <div class="results-top-grid">
+
+      <!-- LEFT: uploaded image + Grad-CAM -->
+      <div class="rtg-images">
+        <div class="orig-img-card">
+          <div class="section-title">📷 <span data-en="Uploaded Image" data-hi="अपलोड की गई छवि">Uploaded Image</span></div>
+          <img id="result-orig-img" src="" alt="Original" />
+        </div>
+        <div class="gradcam-section" style="margin-bottom:0">
+          <div class="section-title">
+            🔥 <span data-en="Grad-CAM Heatmap" data-hi="ग्रैड-CAM हीटमैप">Grad-CAM Heatmap</span>
+          </div>
+          <img id="gradcam-img" src="" alt="GradCAM" />
+          <div class="gradcam-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#ff2200"></div>
+              <span data-en="High" data-hi="उच्च">High</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#ffaa00"></div>
+              <span data-en="Medium" data-hi="मध्यम">Medium</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#0055ff"></div>
+              <span data-en="Low" data-hi="कम">Low</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: disease name + confidence + severity + WTB -->
+      <div class="rtg-info">
+        <!-- Disease header -->
+        <div class="result-header" style="margin-bottom:14px">
+          <div>
+            <div class="disease-name" id="disease-name">—</div>
+            <div class="disease-class" id="disease-class">—</div>
+            <div class="conf-wrap">
+              <div class="conf-label">
+                <span data-en="Confidence" data-hi="विश्वास">Confidence</span>
+                <span class="conf-value" id="conf-pct">0%</span>
+              </div>
+              <div class="conf-bar-bg"><div class="conf-bar-fill" id="conf-bar"></div></div>
+            </div>
+          </div>
+          <div id="severity-badge" class="severity-badge sev-none">—</div>
+        </div>
+
+        <!-- What to Buy -->
+        <div class="wtb-card" style="margin-bottom:0">
+          <div class="wtb-header">🛒 <span data-en="What to Buy" data-hi="क्या खरीदें">What to Buy</span></div>
+          <div class="wtb-grid">
+            <div class="wtb-item">
+              <div class="wtb-lbl" data-en="Recommended Pesticide" data-hi="अनुशंसित कीटनाशक">Recommended Pesticide</div>
+              <div class="wtb-val" id="wtb-pesticide">—</div>
+            </div>
+            <div class="wtb-item">
+              <div class="wtb-lbl" data-en="Treatment / Dose" data-hi="उपचार / मात्रा">Treatment / Dose</div>
+              <div class="wtb-val" id="wtb-cure">—</div>
+            </div>
+          </div>
+          <div class="wtb-store">
+            <span class="store-dot"></span>
+            <span data-en="Available at any Agri Input / Krishi Seva Kendra near you."
+                  data-hi="आपके नजदीकी कृषि इनपुट / कृषि सेवा केंद्र पर उपलब्ध।">
+              Available at any Agri Input / Krishi Seva Kendra near you.
+            </span>
+          </div>
+          <div class="wtb-helpline">
+            <span class="helpline-icon">📞</span>
+            <div class="helpline-text">
+              <strong>1800-180-1551</strong>
+              <span data-en="Kisan Call Centre — Free, 24×7, Hindi &amp; regional languages"
+                    data-hi="किसान कॉल सेंटर — निःशुल्क, 24×7, हिंदी और क्षेत्रीय भाषाएं">
+                Kisan Call Centre — Free, 24×7, Hindi &amp; regional languages
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /results-top-grid -->
+
+    <!-- Action Row full width -->
+    <div class="action-row" style="margin-top:4px">
+      <button class="btn-action btn-kvk" onclick="openKVK()">
+        📍 <span data-en="Find Nearest KVK" data-hi="नजदीकी KVK खोजें">Find Nearest KVK</span>
+      </button>
+      <button class="btn-action btn-mandi" onclick="openMandi()">
+        🏪 <span data-en="Find Nearest Agri Market" data-hi="नजदीकी मंडी खोजें">Find Nearest Agri Market</span>
+      </button>
+      <button class="btn-action btn-share" onclick="shareWhatsApp()">
+        📤 <span data-en="Share on WhatsApp" data-hi="WhatsApp पर शेयर करें">Share on WhatsApp</span>
+      </button>
+    </div>
+
+    <!-- Advisory Tabs — Cure, Prevention, Pesticide, Cause only -->
+    <div class="advisory-section">
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-cure" onclick="switchTab('cure')">
+          <span class="tab-icon">💊</span>
+          <span data-en="Cure" data-hi="उपचार">Cure</span>
+        </button>
+        <button class="tab-btn" id="tab-prevention" onclick="switchTab('prevention')">
+          <span class="tab-icon">🛡️</span>
+          <span data-en="Prevention" data-hi="रोकथाम">Prevention</span>
+        </button>
+        <button class="tab-btn" id="tab-pesticide" onclick="switchTab('pesticide')">
+          <span class="tab-icon">🧪</span>
+          <span data-en="Pesticide" data-hi="कीटनाशक">Pesticide</span>
+        </button>
+        <button class="tab-btn" id="tab-cause" onclick="switchTab('cause')">
+          <span class="tab-icon">🔍</span>
+          <span data-en="Cause" data-hi="कारण">Cause</span>
+        </button>
+      </div>
+      <div class="tab-content active" id="panel-cure"><p id="cure-text">—</p></div>
+      <div class="tab-content" id="panel-prevention"><p id="prevention-text">—</p></div>
+      <div class="tab-content" id="panel-pesticide"><p id="pesticide-text">—</p></div>
+      <div class="tab-content" id="panel-cause"><p id="cause-text">—</p></div>
+    </div>
+
+    <!-- WhatsApp CTA -->
+    <div class="whatsapp-cta">
+      <div class="wa-left">
+        <div class="wa-icon">💬</div>
+        <div class="wa-text">
+          <h3 data-en="Get advice on WhatsApp" data-hi="WhatsApp पर सलाह पाएं">Get advice on WhatsApp</h3>
+          <p data-en="Send your crop photo to our bot and get instant Hindi diagnosis anytime."
+             data-hi="अपनी फसल की फोटो बॉट को भेजें और हिंदी में तुरंत निदान पाएं।">
+            Send your crop photo to our bot and get instant Hindi diagnosis anytime.
+          </p>
+        </div>
+      </div>
+      <a href="https://wa.me/14155238886?text=Hello+AgroScan" class="btn-wa" target="_blank" rel="noopener">
+        💬 <span data-en="Chat on WhatsApp" data-hi="WhatsApp पर बात करें">Chat on WhatsApp</span>
+      </a>
+    </div>
+
+  </div><!-- /results -->
+
+  <!-- ══════════════ STANDALONE: HARVEST CALENDAR — always visible ══════════════ -->
+  <div class="standalone-card">
+    <div class="standalone-card-header" onclick="toggleCard('harvest-body','harvest-arrow')">
+      📅 <span data-en="Harvest Calendar" data-hi="फसल कैलेंडर">Harvest Calendar</span>
+      <span class="sc-toggle" id="harvest-arrow">▲</span>
+    </div>
+    <div class="standalone-card-body" id="harvest-body">
+      <div class="harvest-form">
+        <div class="h-field">
+          <label data-en="Select Crop" data-hi="फसल चुनें">Select Crop</label>
+          <select id="harvest-crop">
+            <option value="">— Select —</option>
+            <option value="tomato">Tomato / टमाटर</option>
+            <option value="potato">Potato / आलू</option>
+            <option value="wheat">Wheat / गेहूं</option>
+            <option value="rice">Rice / चावल</option>
+            <option value="corn">Corn / मकई</option>
+            <option value="apple">Apple / सेब</option>
+            <option value="chilli">Chilli / मिर्च</option>
+            <option value="cauliflower">Cauliflower / फूलगोभी</option>
+            <option value="banana">Banana / केला</option>
+            <option value="grape">Grape / अंगूर</option>
+            <option value="groundnut">Groundnut / मूंगफली</option>
+            <option value="radish">Radish / मूली</option>
+          </select>
+        </div>
+        <div class="h-field">
+          <label data-en="Planting Date" data-hi="बुवाई की तारीख">Planting Date</label>
+          <input type="date" id="harvest-date" />
+        </div>
+        <button class="btn-calc" onclick="calcHarvest()"
+                data-en="📅 Calculate" data-hi="📅 गणना करें">📅 Calculate</button>
+      </div>
+      <div id="harvest-result">
+        <div class="harvest-cards">
+          <div class="h-card">
+            <span class="h-icon">🌱</span>
+            <div class="h-val" id="hc-planted">—</div>
+            <div class="h-lbl" data-en="Planted" data-hi="बोई गई">Planted</div>
+          </div>
+          <div class="h-card" id="hc-days-card">
+            <span class="h-icon">⏳</span>
+            <div class="h-val" id="hc-days">—</div>
+            <div class="h-lbl" data-en="Days to Harvest" data-hi="फसल में दिन">Days to Harvest</div>
+          </div>
+          <div class="h-card">
+            <span class="h-icon">🌾</span>
+            <div class="h-val" id="hc-window">—</div>
+            <div class="h-lbl" data-en="Harvest Window" data-hi="कटाई विंडो">Harvest Window</div>
+          </div>
+        </div>
+        <div class="harvest-info" id="harvest-info"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ STANDALONE: INDOOR GUIDE — always visible ══════════════ -->
+  <div class="standalone-card" style="margin-bottom:30px">
+    <div class="standalone-card-header" onclick="toggleCard('indoor-body','indoor-arrow')">
+      🏠 <span data-en="Indoor Growing Guide" data-hi="इनडोर उगाने की गाइड">Indoor Growing Guide</span>
+      <span class="sc-toggle" id="indoor-arrow">▲</span>
+    </div>
+    <div class="standalone-card-body" id="indoor-body">
+      <!-- Always-visible crop selector -->
+      <div id="indoor-crop-selector">
+        <p class="indoor-selector-hint"
+           data-en="Select a crop to view indoor growing tips:"
+           data-hi="इनडोर गाइड के लिए फसल चुनें:">Select a crop to view indoor growing tips:</p>
+        <div id="indoor-btns">
+          <button id="ibtn-tomato"     class="btn-calc" onclick="renderIndoor('tomato')">🍅 Tomato</button>
+          <button id="ibtn-potato"     class="btn-calc" onclick="renderIndoor('potato')">🥔 Potato</button>
+          <button id="ibtn-chilli"     class="btn-calc" onclick="renderIndoor('chilli')">🌶️ Chilli</button>
+          <button id="ibtn-pepper"     class="btn-calc" onclick="renderIndoor('pepper')">🫑 Pepper</button>
+          <button id="ibtn-cauliflower" class="btn-calc" onclick="renderIndoor('cauliflower')">🥦 Cauliflower</button>
+          <button id="ibtn-radish"     class="btn-calc" onclick="renderIndoor('radish')">🌱 Radish</button>
+          <button id="ibtn-strawberry" class="btn-calc" onclick="renderIndoor('strawberry')">🍓 Strawberry</button>
+          <button id="ibtn-grape"      class="btn-calc" onclick="renderIndoor('grape')">🍇 Grape</button>
+          <button id="ibtn-onion"      class="btn-calc" onclick="renderIndoor('onion')">🧅 Onion</button>
+          <button id="ibtn-garlic"     class="btn-calc" onclick="renderIndoor('garlic')">🧄 Garlic</button>
+          <button id="ibtn-carrot"     class="btn-calc" onclick="renderIndoor('carrot')">🥕 Carrot</button>
+          <button id="ibtn-brinjal"    class="btn-calc" onclick="renderIndoor('brinjal')">🍆 Brinjal</button>
+          <button id="ibtn-cucumber"   class="btn-calc" onclick="renderIndoor('cucumber')">🥒 Cucumber</button>
+          <button id="ibtn-corn"       class="btn-calc" onclick="renderIndoor('corn')">🌽 Corn</button>
+          <button id="ibtn-spinach"    class="btn-calc" onclick="renderIndoor('spinach')">🥬 Spinach</button>
+          <button id="ibtn-peas"       class="btn-calc" onclick="renderIndoor('peas')">🫛 Peas</button>
+          <button id="ibtn-wheat"      class="btn-calc" onclick="renderIndoor('wheat')">🌾 Wheat</button>
+          <button id="ibtn-rice"       class="btn-calc" onclick="renderIndoor('rice')">🌾 Rice</button>
+          <button id="ibtn-mustard"    class="btn-calc" onclick="renderIndoor('mustard')">🌻 Mustard</button>
+          <button id="ibtn-lentil"     class="btn-calc" onclick="renderIndoor('lentil')">🫘 Lentil</button>
+          <button id="ibtn-chickpea"   class="btn-calc" onclick="renderIndoor('chickpea')">🫘 Chickpea</button>
+          <button id="ibtn-moong"      class="btn-calc" onclick="renderIndoor('moong')">🫘 Moong Dal</button>
+          <button id="ibtn-arhar"      class="btn-calc" onclick="renderIndoor('arhar')">🫘 Arhar Dal</button>
+        </div>
+      </div>
+      <!-- Content area -->
+      <div id="indoor-content">
+        <div class="indoor-placeholder">
+          <p data-en="Select a crop above to see indoor growing tips."
+             data-hi="ऊपर फसल चुनें — इनडोर उगाने की जानकारी देखें।">
+            Select a crop above to see indoor growing tips.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p><span>AgroScan</span> · AI Crop Disease Detector<br/>
+    Powered by EfficientNet-B3 + Grad-CAM · Built for Indian Farmers 🌾</p>
+  </footer>
+
+</div><!-- /page-wrap -->
+
+<script>
+/* ══ THEME ═══════════════════════════════════════════════════════════ */
+function initTheme(){
+  const saved=localStorage.getItem('agroscan-theme');
+  if(saved==='light'){
+    document.body.classList.add('light-mode');
+    document.getElementById('theme-btn').textContent='☀️';
+  }
+}
+function toggleTheme(){
+  const isLight=document.body.classList.toggle('light-mode');
+  const btn=document.getElementById('theme-btn');
+  btn.textContent=isLight?'☀️':'🌙';
+  localStorage.setItem('agroscan-theme',isLight?'light':'dark');
+}
+initTheme();
+
+/* ══ CURSOR ══════════════════════════════════════════════════════════ */
+const cursor=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.cssText+=`;left:${mx}px;top:${my}px`});
+(function animRing(){rx+=(mx-rx)*.13;ry+=(my-ry)*.13;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing)})();
+document.querySelectorAll('a,button,select,input,[onclick]').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cursor.style.transform='translate(-50%,-50%) scale(1.9)';ring.style.opacity='.9'});
+  el.addEventListener('mouseleave',()=>{cursor.style.transform='translate(-50%,-50%) scale(1)';ring.style.opacity='.45'});
+});
+
+/* ══ LANG ════════════════════════════════════════════════════════════ */
+let lang='en';
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
+  document.querySelectorAll('[data-en]').forEach(el=>{const v=el.getAttribute('data-'+l);if(v!=null)el.innerHTML=v});
+  if(window._lastResult) applyResult(window._lastResult);
+  const hv=document.getElementById('harvest-date').value;
+  if(hv && document.getElementById('harvest-crop').value) calcHarvest();
+  if(window._lastResult) renderIndoor(window._lastResult.class);
+}
+
+/* ══ SOURCE SWITCH ═══════════════════════════════════════════════════ */
+let activeSource='upload';
+function switchSource(src){
+  activeSource=src;
+  document.getElementById('src-upload').classList.toggle('active',src==='upload');
+  document.getElementById('src-camera').classList.toggle('active',src==='camera');
+  document.getElementById('upload-panel').style.display=src==='upload'?'':'none';
+  document.getElementById('camera-panel').style.display=src==='camera'?'':'none';
+  document.getElementById('analyze-btn').style.display=src==='upload'?'':'none';
+  if(src==='camera'){
+    startCamera();            // ← FIX 2: auto-start on tab switch
+  } else {
+    stopCamera();
+  }
+}
+
+/* ══ FILE UPLOAD ═════════════════════════════════════════════════════ */
+let selectedFile=null;
+function handleUploadClick(){if(activeSource==='upload')document.getElementById('file-input').click()}
+function handleFileSelect(e){const f=e.target.files[0];if(f)loadFile(f)}
+function handleDragOver(e){e.preventDefault();if(activeSource==='upload')document.getElementById('drop-zone').classList.add('drag-over')}
+function handleDragLeave(){document.getElementById('drop-zone').classList.remove('drag-over')}
+function handleDrop(e){
+  e.preventDefault();document.getElementById('drop-zone').classList.remove('drag-over');
+  if(activeSource!=='upload')return;
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/'))loadFile(f);
+  else showToast('Please drop a valid image file.');
+}
+function loadFile(file){
+  selectedFile=file;
+  const r=new FileReader();
+  r.onload=ev=>{
+    document.getElementById('preview-img').src=ev.target.result;
+    document.getElementById('preview-name').textContent=file.name;
+    document.getElementById('drop-default').style.display='none';
+    document.getElementById('preview-wrap').style.display='flex';
+    document.getElementById('drop-zone').classList.add('has-image');
+    document.getElementById('analyze-btn').disabled=false;
+  };
+  r.readAsDataURL(file);
+}
+function clearUpload(){
+  selectedFile=null;
+  document.getElementById('file-input').value='';
+  document.getElementById('preview-img').src='';
+  document.getElementById('drop-default').style.display='';
+  document.getElementById('preview-wrap').style.display='none';
+  document.getElementById('drop-zone').classList.remove('has-image');
+  document.getElementById('analyze-btn').disabled=true;
+  document.getElementById('results').style.display='none';
+  window._lastResult=null;
+}
+
+/* ══ CAMERA (FIX 2) ══════════════════════════════════════════════════ */
+let cameraStream=null;
+
+async function startCamera(){
+  // Reset UI first
+  document.getElementById('cam-placeholder').style.display='flex';
+  document.getElementById('camera-video').style.display='none';
+  document.getElementById('cam-live-badge').style.display='none';
+  document.getElementById('btn-capture').style.display='none';
+  document.getElementById('btn-stop-cam').style.display='none';
+  document.getElementById('cam-captured-wrap').style.display='none';
+
+  if(!navigator.mediaDevices?.getUserMedia){
+    showToast(lang==='hi'?'यह ब्राउज़र कैमरा का समर्थन नहीं करता।':'Camera not supported on this browser.');
+    return;
+  }
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+    });
+    const vid=document.getElementById('camera-video');
+    vid.srcObject=cameraStream;
+    vid.style.display='block';
+    document.getElementById('cam-placeholder').style.display='none';
+    document.getElementById('cam-live-badge').style.display='flex';
+    document.getElementById('btn-capture').style.display='inline-flex';
+    document.getElementById('btn-stop-cam').style.display='inline-flex';
+  }catch(err){
+    showToast((lang==='hi'?'कैमरा एक्सेस विफल: ':'Camera error: ')+err.message);
+    document.getElementById('cam-placeholder').querySelector('p').textContent=
+      lang==='hi'?'कैमरा एक्सेस अस्वीकृत।':'Camera access denied.';
+  }
+}
+
+function stopCamera(){
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  const vid=document.getElementById('camera-video');
+  vid.srcObject=null;vid.style.display='none';
+  document.getElementById('cam-placeholder').style.display='flex';
+  document.getElementById('cam-live-badge').style.display='none';
+  document.getElementById('btn-capture').style.display='none';
+  document.getElementById('btn-stop-cam').style.display='none';
+}
+
+function captureFrame(){
+  const vid=document.getElementById('camera-video');
+  if(!vid.videoWidth){showToast('Camera not ready yet.');return;}
+  const canvas=document.getElementById('capture-canvas');
+  canvas.width=vid.videoWidth;canvas.height=vid.videoHeight;
+  canvas.getContext('2d').drawImage(vid,0,0);
+  canvas.toBlob(blob=>{
+    selectedFile=new File([blob],'capture.jpg',{type:'image/jpeg'});
+    const url=URL.createObjectURL(blob);
+    const cw=document.getElementById('cam-captured-wrap');
+    document.getElementById('cam-captured-img').src=url;
+    cw.style.display='flex';
+    stopCamera();
+    // ← FIX 2: auto-analyze immediately after capture
+    analyze();
+  },'image/jpeg',0.92);
+}
+
+/* ══ ANALYZE ═════════════════════════════════════════════════════════ */
+async function analyze(){
+  if(!selectedFile)return;
+  const btn=document.getElementById('analyze-btn');
+  btn.disabled=true;
+  btn.innerHTML=`<span class="spinner"></span>${lang==='hi'?'विश्लेषण हो रहा है…':'Analyzing…'}`;
+  const form=new FormData();form.append('file',selectedFile);
+  try{
+    const res=await fetch('http://localhost:8000/predict',{method:'POST',body:form});
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.detail||`HTTP ${res.status}`);}
+    const data=await res.json();
+    window._lastResult=data;
+    applyResult(data);
+  }catch(err){
+    showToast('Error: '+err.message);
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML=lang==='hi'?'🔬 पत्ते का विश्लेषण करें':'🔬 Analyze Leaf';
+  }
+}
+
+function applyResult(data){
+  const info=data.disease_info, isHi=lang==='hi';
+  document.getElementById('disease-name').textContent=isHi?info.name_hi:info.name_en;
+  document.getElementById('disease-class').textContent=data.class.replace(/_/g,' ');
+  const pct=data.confidence;
+  document.getElementById('conf-pct').textContent=pct+'%';
+  setTimeout(()=>{document.getElementById('conf-bar').style.width=pct+'%'},80);
+
+  const sevMap={
+    none: {en:'✅ None',  hi:'✅ कोई नहीं',cls:'sev-none'},
+    low:  {en:'⚠️ Low',  hi:'⚠️ कम',      cls:'sev-low'},
+    medium:{en:'🟠 Medium',hi:'🟠 मध्यम',  cls:'sev-medium'},
+    high: {en:'🔴 High', hi:'🔴 अधिक',    cls:'sev-high'},
+  };
+  const si=sevMap[data.severity]||{en:data.severity,hi:data.severity,cls:'sev-none'};
+  const sev=document.getElementById('severity-badge');
+  sev.textContent=isHi?si.hi:si.en; sev.className='severity-badge '+si.cls;
+
+  document.getElementById('gradcam-img').src='data:image/jpeg;base64,'+data.gradcam_image;
+  document.getElementById('cure-text').textContent      =isHi?info.cure_hi:info.cure_en;
+  document.getElementById('prevention-text').textContent=isHi?info.prevention_hi:info.prevention_en;
+  document.getElementById('pesticide-text').textContent =isHi?info.pesticide_hi:info.pesticide_en;
+  document.getElementById('cause-text').textContent     =isHi
+    ?`"${info.name_hi}" के रूप में पहचाना गया। गंभीरता: ${si.hi}। स्थानीय कारण जानने के लिए कृषि विशेषज्ञ से परामर्श लें।`
+    :`Identified as "${info.name_en}". Severity: ${data.severity}. Consult an agronomist for local cause assessment.`;
+
+  // ── What to Buy card ──
+  document.getElementById('wtb-pesticide').textContent = isHi ? info.pesticide_hi : info.pesticide_en;
+  document.getElementById('wtb-cure').textContent      = isHi ? info.cure_hi      : info.cure_en;
+
+  // ── Mirror uploaded image into results left col ──
+  const origSrc = document.getElementById('preview-img').src ||
+                  document.getElementById('cam-captured-img').src;
+  if(origSrc) document.getElementById('result-orig-img').src = origSrc;
+
+  autoSelectHarvestCrop(data.class);
+  renderIndoor(data.class);
+
+  const res=document.getElementById('results');
+  res.style.display='block';
+  switchTab('cure');
+  res.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ══ TABS (4 tabs only — harvest & indoor are standalone) ════════════ */
+const ALL_TABS=['cure','prevention','pesticide','cause'];
+function switchTab(id){
+  ALL_TABS.forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===id);
+    document.getElementById('panel-'+t).classList.toggle('active',t===id);
+  });
+}
+
+/* ══ COLLAPSIBLE STANDALONE CARDS ═══════════════════════════════════ */
+function toggleCard(bodyId, arrowId){
+  const body=document.getElementById(bodyId);
+  const arrow=document.getElementById(arrowId);
+  const hidden=body.style.display==='none';
+  body.style.display=hidden?'':'none';
+  arrow.textContent=hidden?'▲':'▼';
+}
+
+/* ══ HARVEST DATA ════════════════════════════════════════════════════ */
+const HARVEST_DB={
+  tomato:     {min:60, max:80,  signs:{en:['Fruit turns red/yellow uniformly','Slight softness when pressed gently','Glossy skin fully developed','Fruit detaches easily from stem'],hi:['फल समान रूप से लाल/पीला हो','दबाने पर हल्की नरमाई','चमकदार त्वचा विकसित हो','फल तने से आसानी से अलग हो']},time:{en:'Early morning 6–9 AM when cool.',hi:'सुबह 6–9 बजे जब ठंडा हो।'}},
+  potato:     {min:70, max:120, signs:{en:['Foliage yellows and dies back','Skin does not rub off when scratched','Tubers are firm to touch','Vines collapse naturally'],hi:['पत्तियाँ पीली होकर मर जाएं','खरोंचने पर छिलका न उतरे','कंद कठोर हों','बेलें गिर जाएं']},time:{en:'Dry morning after soil drains.',hi:'सूखी सुबह मिट्टी सूखने पर।'}},
+  wheat:      {min:120,max:150, signs:{en:['Grains turn golden yellow','Moisture drops to ~14%','Stems straw-coloured','Grain cannot be dented by nail'],hi:['दाने सुनहरे पीले हों','नमी ~14% हो','तने पुआल रंग के हों','नाखून से दाना न दबे']},time:{en:'Mid-morning after dew dries.',hi:'ओस सूखने के बाद मध्य-सुबह।'}},
+  rice:       {min:90, max:120, signs:{en:['80–85% grains turn golden','Panicle bends with weight','Grains are hard','Moisture ≈20–25%'],hi:['80–85% दाने सुनहरे हों','बाली वजन से झुके','दाने कठोर हों','नमी ≈20–25%']},time:{en:'Early morning for better quality.',hi:'बेहतर गुणवत्ता के लिए सुबह जल्दी।'}},
+  corn:       {min:60, max:100, signs:{en:['Husks dry and brown','Silks turn dark brown','Dent visible on grain top','Kernels firm and full'],hi:['भूसी सूखी और भूरी हो','रेशे गहरे भूरे हों','दाने के ऊपर दाँत दिखे','दाने कठोर और भरे हों']},time:{en:'Morning to preserve sweetness.',hi:'मिठास बनाए रखने के लिए सुबह।'}},
+  apple:      {min:140,max:150, signs:{en:['Background colour green→yellow/red','Seeds turn dark brown','Flesh firm yet crisp','Sweet aroma develops'],hi:['रंग हरे से पीला/लाल हो','बीज गहरे भूरे हों','गूदा दृढ़ पर कुरकुरा हो','मीठी सुगंध आए']},time:{en:'Cool morning hours.',hi:'ठंडी सुबह।'}},
+  chilli:     {min:70, max:85,  signs:{en:['Fruit fully sized with glossy skin','Colour changes per variety','Slight softness felt','Seeds well-formed inside'],hi:['फल पूरे आकार का चमकदार हो','किस्म के अनुसार रंग बदले','हल्की नरमाई महसूस हो','बीज अच्छी तरह बने हों']},time:{en:'Early morning for best colour.',hi:'सबसे अच्छे रंग के लिए सुबह जल्दी।'}},
+  cauliflower:{min:55, max:80,  signs:{en:['Curd compact, white, 15–20 cm','Head firm with no loosening','Before yellowing starts','Leaves still wrap around curd'],hi:['कर्ड कसा, सफेद, 15–20 सेमी','सिर कसा हुआ हो','पीला होने से पहले','पत्तियाँ कर्ड ढकें']},time:{en:'Morning when temperatures are lowest.',hi:'सुबह जब तापमान सबसे कम हो।'}},
+  banana:     {min:270,max:365, signs:{en:['Fingers fill out and rounder','Skin goes from dark to light green','Angularity reduces','Fruit floats in water'],hi:['उंगलियाँ गोल भर जाएं','छिलका हल्के हरे हो','कोणीयता कम हो','फल पानी में तैरे']},time:{en:'Harvest any time — ripen off-tree.',hi:'कभी भी काटें — बाद में पकाएं।'}},
+  grape:      {min:150,max:180, signs:{en:['Berries reach full colour','Sweet flavour with balanced acidity','Seeds turn brown','Berries slightly soften'],hi:['बेरियाँ पूरे रंग में हों','मीठा स्वाद, संतुलित अम्लता','बीज भूरे हों','बेरियाँ थोड़ी नरम हों']},time:{en:'Morning after dew evaporates.',hi:'ओस वाष्पित होने के बाद सुबह।'}},
+  groundnut:  {min:90, max:120, signs:{en:['Leaves yellow','Pods show dark mesh pattern','Shell is hard','Inner skin turns pink/brown'],hi:['पत्तियाँ पीली हों','फलियों में गहरी जाली','छिलका कठोर हो','आंतरिक त्वचा गुलाबी/भूरी हो']},time:{en:'When soil is moist for easier pulling.',hi:'मिट्टी नम हो तो आसान निकासी।'}},
+  radish:     {min:25, max:30,  signs:{en:['Root 2.5–3 cm diameter at soil line','Smooth and firm skin','Colour fully developed','Before root becomes pithy'],hi:['जड़ 2.5–3 सेमी व्यास हो','छिलका चिकना और कठोर हो','रंग पूरी तरह विकसित हो','स्पंजी होने से पहले']},time:{en:'Morning while roots are cool and firm.',hi:'सुबह जब जड़ें ठंडी और कठोर हों।'}},
+};
+
+const CLASS_TO_CROP={
+  tomato:'tomato',potato:'potato',wheat:'wheat',rice:'rice',
+  corn:'corn',maize:'corn',apple:'apple',chilli:'chilli',chili:'chilli',
+  cauliflower:'cauliflower',banana:'banana',grape:'grape',
+  groundnut:'groundnut',radish:'radish',pepper:'chilli',
+};
+
+function autoSelectHarvestCrop(cls){
+  const lower=cls.toLowerCase();
+  for(const[k,v] of Object.entries(CLASS_TO_CROP)){
+    if(lower.includes(k)){document.getElementById('harvest-crop').value=v;return;}
+  }
+}
+
+function calcHarvest(){
+  const cropKey=document.getElementById('harvest-crop').value;
+  const dateVal=document.getElementById('harvest-date').value;
+  const isHi=lang==='hi';
+  if(!cropKey||!dateVal){showToast(isHi?'कृपया फसल और तारीख चुनें।':'Please select crop and planting date.');return;}
+  const d=HARVEST_DB[cropKey];
+  const planted=new Date(dateVal);
+  const today=new Date();today.setHours(0,0,0,0);
+  const early=new Date(planted);early.setDate(early.getDate()+d.min);
+  const late=new Date(planted);late.setDate(late.getDate()+d.max);
+  const dToEarly=Math.floor((early-today)/86400000);
+  const dToLate=Math.floor((late-today)/86400000);
+  const fmt=dt=>dt.toLocaleDateString(isHi?'hi-IN':'en-IN',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('hc-planted').textContent=fmt(planted);
+  document.getElementById('hc-window').textContent=fmt(early)+' – '+fmt(late);
+  let dLabel='', dClass='';
+  if(dToEarly<=0&&dToLate>=0){dLabel=isHi?'✅ कटाई का समय!':'✅ Ready now!'}
+  else if(dToLate<0){dLabel=isHi?'⚠️ देर हो गई!':'⚠️ Overdue!';dClass='urgent'}
+  else if(dToEarly<=7){dLabel=isHi?`~${dToEarly} दिन`:`~${dToEarly} days`;dClass='warn'}
+  else{dLabel=isHi?`${dToEarly}–${dToLate} दिन`:`${dToEarly}–${dToLate} days`}
+  document.getElementById('hc-days').textContent=dLabel;
+  document.getElementById('hc-days-card').className='h-card '+dClass;
+  const signs=d.signs[isHi?'hi':'en'].map(s=>`<li>${s}</li>`).join('');
+  document.getElementById('harvest-info').innerHTML=`
+    <h4>${isHi?'📋 तैयारी के संकेत':'📋 Signs of Readiness'}</h4>
+    <ul>${signs}</ul>
+    <h4>${isHi?'🕐 सबसे अच्छा समय':'🕐 Best Harvest Time'}</h4>
+    <ul><li>${d.time[isHi?'hi':'en']}</li></ul>`;
+  document.getElementById('harvest-result').style.display='block';
+}
+
+/* ══ INDOOR DATA ═════════════════════════════════════════════════════ */
+const INDOOR_DB={
+  tomato:{name:{en:'Tomato',hi:'टमाटर'},temp:'18–27°C',hum:{en:'60–70%',hi:'60–70%'},light:{en:'14–16 hrs/day',hi:'14–16 घंटे/दिन'},water:{en:'Every 2–3 days',hi:'हर 2–3 दिन'},pot:{en:'≥ 12-inch deep pot',hi:'≥ 12 इंच गहरा गमला'},
+    dos:{en:['Use perlite-amended potting mix','Stake when 30 cm tall','Weekly balanced liquid fertilizer','Gently shake stems to pollinate'],hi:['पर्लाइट युक्त मिट्टी उपयोग करें','30 सेमी पर सहारा दें','साप्ताहिक तरल उर्वरक दें','परागण के लिए तने हिलाएं']},
+    donts:{en:['Don\'t let soil dry completely','Don\'t overwater — root rot','Don\'t keep below 13°C at night','Don\'t use garden soil'],hi:['मिट्टी बिल्कुल न सुखाएं','अधिक पानी न दें','13°C से कम न रखें रात में','बगीचे की मिट्टी न उपयोग करें']}},
+  potato:{name:{en:'Potato',hi:'आलू'},temp:'15–20°C',hum:{en:'60–70%',hi:'60–70%'},light:{en:'8–10 hrs/day',hi:'8–10 घंटे/दिन'},water:{en:'Every 3–4 days',hi:'हर 3–4 दिन'},pot:{en:'≥ 15-inch deep container',hi:'≥ 15 इंच गहरा कंटेनर'},
+    dos:{en:['Loose sandy loam soil','Hill up soil as plants grow','Let foliage yellow before harvest','Keep tubers covered from light'],hi:['ढीली रेतीली मिट्टी उपयोग करें','पौधे बढ़ने पर मिट्टी चढ़ाएं','पत्तियाँ पीली हों तभी खोदें','कंद रोशनी से ढककर रखें']},
+    donts:{en:['Don\'t use waterlogged soil','Don\'t harvest too early','Don\'t expose tubers to sunlight','Don\'t plant diseased seed potatoes'],hi:['जलजमाव न होने दें','बहुत जल्दी न खोदें','कंद धूप में न रखें','रोगग्रस्त बीज आलू न लगाएं']}},
+  chilli:{name:{en:'Chilli / Pepper',hi:'मिर्च'},temp:'20–30°C',hum:{en:'50–70%',hi:'50–70%'},light:{en:'12–16 hrs/day',hi:'12–16 घंटे/दिन'},water:{en:'Every 2–3 days',hi:'हर 2–3 दिन'},pot:{en:'≥ 8-inch pot',hi:'≥ 8 इंच गमला'},
+    dos:{en:['High-potassium feed when fruiting','Mist leaves for humidity','Pinch early buds for bushier growth','Use grow lights if <6 hrs sun'],hi:['फल आने पर उच्च पोटेशियम दें','आर्द्रता के लिए पत्तियाँ गीली करें','झाड़ीदार विकास के लिए कलियाँ चुटें','<6 घंटे धूप हो तो ग्रो लाइट लगाएं']},
+    donts:{en:['Don\'t let soil dry out','Don\'t keep below 15°C','Don\'t overwater in winter','Don\'t place near cold drafts'],hi:['मिट्टी न सुखाएं','15°C से कम न रखें','सर्दी में अधिक पानी न दें','ठंडी हवा पास न रखें']}},
+  cauliflower:{name:{en:'Cauliflower',hi:'फूलगोभी'},temp:'15–22°C',hum:{en:'60–80%',hi:'60–80%'},light:{en:'6–8 hrs/day',hi:'6–8 घंटे/दिन'},water:{en:'Every 2–3 days',hi:'हर 2–3 दिन'},pot:{en:'≥ 12-inch wide & deep',hi:'≥ 12 इंच चौड़ा और गहरा'},
+    dos:{en:['Blanch by tying leaves over curd','Nitrogen-rich fertilizer early','Keep roots consistently moist','Harvest when curd is tight & compact'],hi:['पत्तियाँ बाँधकर ब्लांच करें','शुरुआत में नाइट्रोजन उर्वरक दें','जड़ें हमेशा नम रखें','कर्ड कसा हो तो तुरंत काटें']},
+    donts:{en:['Don\'t grow in summer heat','Don\'t let soil dry','Don\'t skip fertilization','Don\'t delay harvest'],hi:['गर्मियों में न उगाएं','मिट्टी न सुखाएं','उर्वरण न छोड़ें','देर न करें']}},
+  radish:{name:{en:'Radish',hi:'मूली'},temp:'10–18°C',hum:{en:'60–70%',hi:'60–70%'},light:{en:'6 hrs/day',hi:'6 घंटे/दिन'},water:{en:'Daily (keep moist)',hi:'रोज (नम रखें)'},pot:{en:'≥ 6-inch deep',hi:'≥ 6 इंच गहरा'},
+    dos:{en:['Thin seedlings to 2-inch spacing','Loose stone-free soil','Harvest within 30 days','Succession sow every 2 weeks'],hi:['2 इंच अंतर पर पतला करें','ढीली, पत्थर-रहित मिट्टी','30 दिन में काटें','हर 2 सप्ताह में बोएं']},
+    donts:{en:['Don\'t crowd plants','Don\'t over-fertilize with nitrogen','Don\'t delay harvest','Don\'t let soil dry between waterings'],hi:['भीड़ न करें','अधिक नाइट्रोजन न दें','देरी न करें','पानी के बीच मिट्टी न सुखाएं']}},
+  pepper:{name:{en:'Bell Pepper',hi:'शिमला मिर्च'},temp:'20–28°C',hum:{en:'50–70%',hi:'50–70%'},light:{en:'12–14 hrs/day',hi:'12–14 घंटे/दिन'},water:{en:'Every 2–3 days',hi:'हर 2–3 दिन'},pot:{en:'≥ 10-inch pot',hi:'≥ 10 इंच गमला'},
+    dos:{en:['Stake when fruiting','Balanced NPK fertilizer','Consistent moisture','Harvest green or wait for colour'],hi:['फल आने पर सहारा दें','संतुलित NPK उर्वरक','नमी बनाएं','हरा काटें या रंग बदलने तक रखें']},
+    donts:{en:['Don\'t expose to cold drafts','Don\'t waterlog soil','Don\'t under-light','Don\'t skip calcium'],hi:['ठंडी हवा न दें','जलभराव न होने दें','रोशनी कम न करें','कैल्शियम न छोड़ें']}},
+  strawberry:{name:{en:'Strawberry',hi:'स्ट्रॉबेरी'},temp:'15–25°C',hum:{en:'65–75%',hi:'65–75%'},light:{en:'8–10 hrs/day',hi:'8–10 घंटे/दिन'},water:{en:'Every 1–2 days',hi:'हर 1–2 दिन'},pot:{en:'Wide shallow pot ≥ 8-inch',hi:'चौड़ा उथला गमला ≥ 8 इंच'},
+    dos:{en:['Sandy loam or strawberry mix','Remove runners to boost fruiting','High-phosphorus fertilizer','Mulch to keep fruits clean'],hi:['रेतीली दोमट या स्ट्रॉबेरी मिश्रण','धावक हटाएं','उच्च फॉस्फोरस उर्वरक','मल्च करें'],},
+    donts:{en:['Don\'t wet the crown','Don\'t use clay soil','Don\'t let soil dry between watering','Don\'t overcrowd'],hi:['क्राउन न भिगोएं','चिकनी मिट्टी न उपयोग करें','पानी के बीच न सुखाएं','भीड़ न करें']}},
+  grape:{name:{en:'Grape',hi:'अंगूर'},temp:{en:'20–30°C day, >10°C night',hi:'20–30°C दिन, >10°C रात'},hum:{en:'40–60%',hi:'40–60%'},light:{en:'8+ hrs full sun',hi:'8+ घंटे पूर्ण धूप'},water:{en:'Every 5–7 days (deep)',hi:'हर 5–7 दिन (गहरा)'},pot:{en:'≥ 15-gallon container',hi:'≥ 15 गैलन कंटेनर'},
+    dos:{en:['Strong trellis support','Prune aggressively each winter','Well-draining mix','Light balanced fertilizer'],hi:['मजबूत जाली लगाएं','हर सर्दी छंटाई करें','अच्छी जल निकासी वाली मिट्टी','हल्का संतुलित उर्वरक']},
+    donts:{en:['Don\'t overwater','Don\'t keep in low light','Don\'t skip winter pruning','Don\'t let vines grow unchecked'],hi:['अधिक पानी न दें','कम रोशनी में न रखें','सर्दी की छंटाई न छोड़ें','बेलें बेरोकटोक न बढ़ने दें']}},
+  onion:{name:{en:'Onion',hi:'प्याज'},temp:'13–24°C',hum:{en:'50–70%',hi:'50–70%'},light:{en:'10–12 hrs/day',hi:'10–12 घंटे/दिन'},water:{en:'Every 3–4 days',hi:'हर 3–4 दिन'},pot:{en:'≥ 8-inch deep pot',hi:'≥ 8 इंच गहरा गमला'},
+    dos:{en:['Loose well-draining sandy loam','Plant sets 1-inch deep, 4-inch apart','Reduce watering as tops fall over','Cure bulbs in a dry airy spot after harvest'],hi:['ढीली जल निकासी वाली बलुई दोमट मिट्टी','बल्ब 1 इंच गहरे, 4 इंच अंतर पर लगाएं','पत्तियाँ गिरने पर पानी कम करें','कटाई के बाद बल्ब सुखाएं']},
+    donts:{en:['Don\'t overwater — causes bulb rot','Don\'t plant in acidic soil','Don\'t crowd bulbs together','Don\'t harvest before tops dry'],hi:['अधिक पानी न दें — बल्ब सड़ता है','अम्लीय मिट्टी में न लगाएं','बल्ब पास-पास न लगाएं','पत्तियाँ सूखने से पहले न खोदें']}},
+  garlic:{name:{en:'Garlic',hi:'लहसुन'},temp:'13–24°C',hum:{en:'40–60%',hi:'40–60%'},light:{en:'8–10 hrs/day',hi:'8–10 घंटे/दिन'},water:{en:'Every 4–5 days',hi:'हर 4–5 दिन'},pot:{en:'≥ 8-inch deep pot',hi:'≥ 8 इंच गहरा गमला'},
+    dos:{en:['Plant cloves pointed end up, 2-inch deep','Well-draining slightly acidic soil','Remove flower scapes to boost bulb size','Dry bulbs for 3–4 weeks after harvest'],hi:['नुकीले सिरे ऊपर, 2 इंच गहरे लगाएं','जल निकासी वाली थोड़ी अम्लीय मिट्टी','बल्ब बड़ा करने के लिए फूल की डंठल हटाएं','कटाई के बाद 3–4 सप्ताह सुखाएं']},
+    donts:{en:['Don\'t waterlog soil','Don\'t plant cloves flat side up','Don\'t harvest too early','Don\'t store in fridge before curing'],hi:['मिट्टी में जलभराव न करें','चपटे सिरे ऊपर न लगाएं','जल्दी न खोदें','सुखाने से पहले फ्रिज में न रखें']}},
+  carrot:{name:{en:'Carrot',hi:'गाजर'},temp:'16–21°C',hum:{en:'50–70%',hi:'50–70%'},light:{en:'6–8 hrs/day',hi:'6–8 घंटे/दिन'},water:{en:'Every 2–3 days (keep moist)',hi:'हर 2–3 दिन (नम रखें)'},pot:{en:'≥ 12-inch deep container',hi:'≥ 12 इंच गहरा कंटेनर'},
+    dos:{en:['Loose stone-free sandy soil','Thin seedlings to 3-inch spacing','Add phosphorus fertilizer for root growth','Harvest when shoulders peek above soil'],hi:['ढीली पत्थर-रहित रेतीली मिट्टी','3 इंच अंतर पर पतला करें','जड़ विकास के लिए फॉस्फोरस दें','कंधे दिखने पर खोदें']},
+    donts:{en:['Don\'t use rocky or clay soil','Don\'t over-fertilize with nitrogen','Don\'t let soil crust over','Don\'t delay harvest past maturity'],hi:['पथरीली या चिकनी मिट्टी न उपयोग करें','अधिक नाइट्रोजन न दें','मिट्टी की ऊपरी परत न जमने दें','परिपक्व होने के बाद देरी न करें']}},
+  brinjal:{name:{en:'Brinjal / Eggplant',hi:'बैंगन'},temp:'22–30°C',hum:{en:'60–70%',hi:'60–70%'},light:{en:'12–14 hrs/day',hi:'12–14 घंटे/दिन'},water:{en:'Every 2–3 days',hi:'हर 2–3 दिन'},pot:{en:'≥ 12-inch deep pot',hi:'≥ 12 इंच गहरा गमला'},
+    dos:{en:['Warm well-draining soil rich in organic matter','Stake plants when 30 cm tall','Balanced NPK with extra potassium at flowering','Harvest when skin is shiny'],hi:['गर्म, जैविक पदार्थ युक्त जल निकासी मिट्टी','30 सेमी पर सहारा दें','फूल आने पर पोटेशियम युक्त NPK दें','छिलका चमकदार हो तो काटें']},
+    donts:{en:['Don\'t keep below 18°C','Don\'t let soil dry out','Don\'t pick overripe fruits','Don\'t skip pest checks for borers'],hi:['18°C से कम न रखें','मिट्टी न सुखाएं','अधिक पके फल न छोड़ें','बोरर के लिए कीट जांच न छोड़ें']}},
+  cucumber:{name:{en:'Cucumber',hi:'खीरा'},temp:'21–29°C',hum:{en:'70–80%',hi:'70–80%'},light:{en:'8–10 hrs/day',hi:'8–10 घंटे/दिन'},water:{en:'Daily (keep consistently moist)',hi:'रोज (नम रखें)'},pot:{en:'≥ 12-inch wide & deep pot',hi:'≥ 12 इंच चौड़ा और गहरा गमला'},
+    dos:{en:['Trellis for vertical climbing','Rich compost-amended potting mix','Consistent watering — uneven causes bitterness','Harvest when 6–8 inches long'],hi:['ऊर्ध्वाधर चढ़ाई के लिए जाली लगाएं','कम्पोस्ट युक्त मिट्टी','नियमित पानी — असमान सिंचाई कड़वाहट देती है','6–8 इंच लंबाई पर काटें']},
+    donts:{en:['Don\'t let soil dry between watering','Don\'t grow in cold below 18°C','Don\'t pick too late — turns bitter','Don\'t skip pollination indoors'],hi:['पानी के बीच मिट्टी न सुखाएं','18°C से कम न रखें','देर से न काटें — कड़वा होता है','इनडोर में परागण न छोड़ें']}},
+  corn:{name:{en:'Corn / Maize',hi:'मकई'},temp:'18–27°C',hum:{en:'50–80%',hi:'50–80%'},light:{en:'10–12 hrs/day',hi:'10–12 घंटे/दिन'},water:{en:'Every 2–3 days (deep watering)',hi:'हर 2–3 दिन (गहरा पानी)'},pot:{en:'≥ 15-gallon deep container',hi:'≥ 15 गैलन गहरा कंटेनर'},
+    dos:{en:['Plant in blocks of 4+ for wind pollination','Nitrogen-rich fertilizer every 2 weeks','Keep consistently moist during tasseling','Hand-pollinate indoors by shaking tassels'],hi:['परागण के लिए 4+ का समूह लगाएं','हर 2 सप्ताह नाइट्रोजन उर्वरक दें','तासेल के समय नम रखें','इनडोर में तासेल हिलाकर परागण करें']},
+    donts:{en:['Don\'t plant single stalks indoors','Don\'t let soil go dry during silking','Don\'t harvest before silks turn brown','Don\'t crowd in small containers'],hi:['अकेला पौधा न लगाएं','रेशम निकलते समय पानी न रोकें','रेशम भूरा होने से पहले न काटें','छोटे कंटेनर में भीड़ न करें']}},
+  spinach:{name:{en:'Spinach',hi:'पालक'},temp:'10–18°C',hum:{en:'50–70%',hi:'50–70%'},light:{en:'6–8 hrs/day',hi:'6–8 घंटे/दिन'},water:{en:'Every 2–3 days (keep moist)',hi:'हर 2–3 दिन (नम रखें)'},pot:{en:'≥ 6-inch shallow pot',hi:'≥ 6 इंच उथला गमला'},
+    dos:{en:['Cool season crop — ideal winter indoor plant','Nitrogen-rich fertilizer every 2–3 weeks','Harvest outer leaves first for continuous yield','Sow fresh seeds every 3 weeks for succession'],hi:['ठंड का मौसम — सर्दी में इनडोर के लिए आदर्श','हर 2–3 सप्ताह नाइट्रोजन उर्वरक दें','बाहरी पत्तियाँ पहले काटें — लगातार उत्पादन','हर 3 सप्ताह में नए बीज बोएं']},
+    donts:{en:['Don\'t grow in summer heat — bolts quickly','Don\'t let soil waterlog','Don\'t harvest more than 1/3 at once','Don\'t ignore aphids on undersides'],hi:['गर्मियों में न उगाएं — जल्दी फूल जाती है','जलभराव न होने दें','एक बार में 1/3 से ज्यादा न काटें','पत्तियों के नीचे एफिड न छोड़ें']}},
+  peas:{name:{en:'Peas',hi:'मटर'},temp:'13–18°C',hum:{en:'60–70%',hi:'60–70%'},light:{en:'6–8 hrs/day',hi:'6–8 घंटे/दिन'},water:{en:'Every 2–3 days',hi:'हर 2–3 दिन'},pot:{en:'≥ 8-inch deep pot with trellis',hi:'≥ 8 इंच गहरा गमला और जाली'},
+    dos:{en:['Trellis or stick for climbing varieties','Cool season planting (Oct–Feb in India)','Balanced phosphorus-rich fertilizer','Harvest pods when plump but still bright green'],hi:['चढ़ने वाली किस्म के लिए जाली लगाएं','ठंड में बोएं (भारत में अक्टूबर–फरवरी)','फॉस्फोरस युक्त संतुलित उर्वरक','फली भरी हो और हरी हो तो काटें']},
+    donts:{en:['Don\'t grow in heat above 24°C','Don\'t over-fertilize with nitrogen','Don\'t let pods over-mature — turns starchy','Don\'t wet leaves — causes powdery mildew'],hi:['24°C से अधिक गर्मी में न उगाएं','अधिक नाइट्रोजन न दें','फलियाँ अधिक पकने न दें — स्टार्चयुक्त हो जाती है','पत्तियाँ न भिगोएं — ख़स्ता फफूंदी होती है']}},
+  wheat:{name:{en:'Wheat',hi:'गेहूं'},temp:'15–20°C',hum:{en:'40–60%',hi:'40–60%'},light:{en:'10–12 hrs/day',hi:'10–12 घंटे/दिन'},water:{en:'Every 4–5 days',hi:'हर 4–5 दिन'},pot:{en:'Wide shallow tray ≥ 6-inch deep',hi:'चौड़ी उथली ट्रे ≥ 6 इंच गहरी'},
+    dos:{en:['Dense sowing for wheatgrass or grain','Nitrogen fertilizer at tillering stage','Keep cool and bright — south-facing window','Harvest grain when stalks turn golden'],hi:['घनी बुवाई करें','कल्ले निकलते समय नाइट्रोजन दें','ठंडी और उज्ज्वल खिड़की पर रखें','डंठल सुनहरे हों तो अनाज काटें']},
+    donts:{en:['Don\'t grow in warm summers','Don\'t overwater — causes fungal rot','Don\'t let soil compact','Don\'t skip thinning if growing for grain'],hi:['गर्म गर्मियों में न उगाएं','अधिक पानी न दें — फफूंद सड़ांध','मिट्टी न जमने दें','अनाज के लिए पतला करना न छोड़ें']}},
+  rice:{name:{en:'Rice',hi:'चावल'},temp:'20–35°C',hum:{en:'70–80%',hi:'70–80%'},light:{en:'10–12 hrs/day',hi:'10–12 घंटे/दिन'},water:{en:'Keep soil flooded 2–5 cm (traditional) or moist',hi:'2–5 सेमी पानी भरा रखें या नम रखें'},pot:{en:'≥ 12-inch wide waterproof container',hi:'≥ 12 इंच चौड़ा जलरोधी कंटेनर'},
+    dos:{en:['Transplant seedlings after 3 weeks','Flooded or consistently wet growing method','High-nitrogen fertilizer every 2 weeks','Drain and dry before harvest'],hi:['3 सप्ताह बाद रोपाई करें','जलमग्न या लगातार नम विधि','हर 2 सप्ताह उच्च नाइट्रोजन दें','कटाई से पहले सुखाएं']},
+    donts:{en:['Don\'t let soil dry during grain fill','Don\'t use cold water — shocks roots','Don\'t harvest before grains turn golden','Don\'t skip pest monitoring for stem borers'],hi:['दाने भरते समय मिट्टी न सुखाएं','ठंडा पानी न दें','दाने सुनहरे होने से पहले न काटें','तना बेधक के लिए निगरानी न छोड़ें']}},
+  mustard:{name:{en:'Mustard',hi:'सरसों'},temp:'10–25°C',hum:{en:'40–60%',hi:'40–60%'},light:{en:'8–10 hrs/day',hi:'8–10 घंटे/दिन'},water:{en:'Every 4–5 days',hi:'हर 4–5 दिन'},pot:{en:'≥ 8-inch deep pot',hi:'≥ 8 इंच गहरा गमला'},
+    dos:{en:['Sow directly — dislikes transplanting','Light sandy loam soil','Low-nitrogen fertilizer (promotes leafy growth over pods)','Harvest pods when 2/3 have turned yellow'],hi:['सीधे बोएं — रोपाई पसंद नहीं','हल्की बलुई दोमट मिट्टी','कम नाइट्रोजन उर्वरक (फलियों के लिए)','2/3 फलियाँ पीली हों तो काटें']},
+    donts:{en:['Don\'t grow in summer heat','Don\'t overwater — root rot risk','Don\'t harvest too late — pods shatter','Don\'t use heavy clay soil'],hi:['गर्मियों में न उगाएं','अधिक पानी न दें','देरी से न काटें — फलियाँ फटती हैं','भारी चिकनी मिट्टी न उपयोग करें']}},
+  lentil:{name:{en:'Lentil',hi:'मसूर दाल'},temp:'18–30°C',hum:{en:'40–60%',hi:'40–60%'},light:{en:'6–8 hrs/day',hi:'6–8 घंटे/दिन'},water:{en:'Every 4–5 days',hi:'हर 4–5 दिन'},pot:{en:'≥ 10-inch deep pot',hi:'≥ 10 इंच गहरा गमला'},
+    dos:{en:['Inoculate seeds with Rhizobium for nitrogen fixation','Light well-draining soil','Minimal fertilizer needed (fixes own nitrogen)','Harvest pods when they turn light brown'],hi:['नाइट्रोजन स्थिरीकरण के लिए Rhizobium से उपचार करें','हल्की जल निकासी मिट्टी','कम उर्वरक (स्वयं नाइट्रोजन बनाती है)','फलियाँ हल्की भूरी हों तो काटें']},
+    donts:{en:['Don\'t overwater','Don\'t use waterlogged heavy soil','Don\'t over-fertilize with nitrogen','Don\'t harvest in wet conditions'],hi:['अधिक पानी न दें','भारी जलजमाव मिट्टी न उपयोग करें','अधिक नाइट्रोजन न दें','गीले में कटाई न करें']}},
+  chickpea:{name:{en:'Chickpea',hi:'चना'},temp:'15–25°C',hum:{en:'40–60%',hi:'40–60%'},light:{en:'8–10 hrs/day',hi:'8–10 घंटे/दिन'},water:{en:'Every 5–7 days (drought-tolerant)',hi:'हर 5–7 दिन (सूखा-सहनशील)'},pot:{en:'≥ 10-inch deep pot',hi:'≥ 10 इंच गहरा गमला'},
+    dos:{en:['Cool dry growing conditions preferred','Inoculate with Rhizobium before planting','Low to moderate watering — drought-tolerant','Harvest pods when dry and rattling'],hi:['ठंडी और सूखी परिस्थितियाँ पसंद','बोने से पहले Rhizobium से उपचार','कम पानी — सूखा-सहनशील','फलियाँ सूखकर खड़खड़ाएं तो काटें']},
+    donts:{en:['Don\'t grow in hot humid weather','Don\'t overwater','Don\'t use fresh manure','Don\'t plant near other legumes to avoid disease spread'],hi:['गर्म आर्द्र मौसम में न उगाएं','अधिक पानी न दें','ताजा खाद न उपयोग करें','रोग फैलने से बचाने के लिए अन्य फलियों के पास न लगाएं']}},
+  moong:{name:{en:'Moong Dal',hi:'मूंग'},temp:'25–35°C',hum:{en:'50–70%',hi:'50–70%'},light:{en:'8–10 hrs/day',hi:'8–10 घंटे/दिन'},water:{en:'Every 3–4 days',hi:'हर 3–4 दिन'},pot:{en:'≥ 8-inch deep pot',hi:'≥ 8 इंच गहरा गमला'},
+    dos:{en:['Warm season crop — ideal for Indian summers','Well-draining loamy soil','Harvest in multiple pickings as pods mature','Dry harvested pods fully before storing'],hi:['गर्म मौसम की फसल — भारतीय गर्मियों के लिए आदर्श','अच्छी जल निकासी वाली दोमट मिट्टी','पकने पर कई बार काटें','भंडारण से पहले फलियाँ पूरी तरह सुखाएं']},
+    donts:{en:['Don\'t grow in cold below 20°C','Don\'t overwater during flowering','Don\'t delay harvest — pods shatter','Don\'t use acidic soil'],hi:['20°C से कम ठंड में न उगाएं','फूल आने पर अधिक पानी न दें','देरी से न काटें — फलियाँ फटती हैं','अम्लीय मिट्टी न उपयोग करें']}},
+  arhar:{name:{en:'Arhar / Tur Dal',hi:'अरहर दाल'},temp:'20–30°C',hum:{en:'40–60%',hi:'40–60%'},light:{en:'10–12 hrs/day',hi:'10–12 घंटे/दिन'},water:{en:'Every 5–7 days (drought-tolerant)',hi:'हर 5–7 दिन (सूखा-सहनशील)'},pot:{en:'≥ 15-gallon large container',hi:'≥ 15 गैलन बड़ा कंटेनर'},
+    dos:{en:['Deep large container for tap roots','Phosphorus-rich fertilizer at flowering','Harvest when 75% pods turn brown','Support stake when 60+ cm tall'],hi:['जड़ों के लिए गहरा बड़ा कंटेनर','फूल आने पर फॉस्फोरस युक्त उर्वरक','75% फलियाँ भूरी हों तो काटें','60+ सेमी पर सहारा दें']},
+    donts:{en:['Don\'t grow in waterlogged soil','Don\'t over-irrigate','Don\'t harvest too early','Don\'t keep in extremely humid conditions'],hi:['जलजमाव मिट्टी में न उगाएं','अधिक सिंचाई न करें','जल्दी न काटें','अत्यधिक आर्द्र परिस्थितियों में न रखें']}},
+};
+
+const CLASS_TO_INDOOR={
+  tomato:'tomato',potato:'potato',chilli:'chilli',chili:'chilli',
+  cauliflower:'cauliflower',radish:'radish',pepper:'pepper',
+  strawberry:'strawberry',grape:'grape',
+  onion:'onion',garlic:'garlic',carrot:'carrot',
+  brinjal:'brinjal',eggplant:'brinjal',
+  cucumber:'cucumber',
+  corn:'corn',maize:'corn',
+  spinach:'spinach',palak:'spinach',
+  peas:'peas',
+  wheat:'wheat',
+  rice:'rice',
+  mustard:'mustard',sarson:'mustard',
+  lentil:'lentil',masoor:'lentil',
+  chickpea:'chickpea',chana:'chickpea',
+  moong:'moong',
+  arhar:'arhar',tur:'arhar',
+};
+
+function classToIndoorKey(cls){
+  const lower=cls.toLowerCase();
+  for(const[k,v] of Object.entries(CLASS_TO_INDOOR)){if(lower.includes(k))return v;}
+  return null;
+}
+
+let _currentIndoorKey=null;
+
+function _setIndoorActiveBtn(key){
+  // Remove active class from all buttons
+  document.querySelectorAll('#indoor-btns .btn-calc').forEach(b=>b.classList.remove('ibtn-active'));
+  if(key){
+    const btn=document.getElementById('ibtn-'+key);
+    if(btn) btn.classList.add('ibtn-active');
+  }
+}
+
+function clearIndoor(){
+  _currentIndoorKey=null;
+  _setIndoorActiveBtn(null);
+  const el=document.getElementById('indoor-content');
+  const isHi=lang==='hi';
+  el.innerHTML=`<div class="indoor-placeholder"><p>${isHi
+    ?'ऊपर फसल चुनें — इनडोर उगाने की जानकारी देखें।'
+    :'Select a crop above to see indoor growing tips.'
+  }</p></div>`;
+}
+
+function renderIndoor(cls){
+  const key=classToIndoorKey(cls);
+  const el=document.getElementById('indoor-content');
+  const isHi=lang==='hi';
+  if(!key){
+    _setIndoorActiveBtn(null);
+    el.innerHTML=`<div class="indoor-placeholder"><p>${isHi
+      ?'इस फसल के लिए इनडोर गाइड उपलब्ध नहीं। ऊपर किसी और फसल को चुनें।'
+      :'Indoor guide not available for this crop. Please select another crop above.'
+    }</p></div>`;
+    return;
+  }
+  _currentIndoorKey=key;
+  _setIndoorActiveBtn(key);
+  const d=INDOOR_DB[key];
+  const tempStr=typeof d.temp==='object'?d.temp[isHi?'hi':'en']:d.temp;
+  const dosLi  =d.dos[isHi?'hi':'en'].map(s=>`<li>${s}</li>`).join('');
+  const dontsLi=d.donts[isHi?'hi':'en'].map(s=>`<li>${s}</li>`).join('');
+  el.innerHTML=`
+    <div class="indoor-crop-name" style="display:flex;align-items:center">
+      🏠 ${d.name[isHi?'hi':'en']}
+      <button class="indoor-clear-btn" onclick="clearIndoor()">${isHi?'✕ बदलें':'✕ Clear'}</button>
+    </div>
+    <div class="indoor-grid">
+      <div class="in-stat"><span class="in-icon">🌡️</span><div class="in-val">${tempStr}</div><div class="in-lbl">${isHi?'तापमान':'Temperature'}</div></div>
+      <div class="in-stat"><span class="in-icon">💧</span><div class="in-val">${d.hum[isHi?'hi':'en']}</div><div class="in-lbl">${isHi?'आर्द्रता':'Humidity'}</div></div>
+      <div class="in-stat"><span class="in-icon">☀️</span><div class="in-val">${d.light[isHi?'hi':'en']}</div><div class="in-lbl">${isHi?'प्रकाश':'Light'}</div></div>
+      <div class="in-stat"><span class="in-icon">🚿</span><div class="in-val">${d.water[isHi?'hi':'en']}</div><div class="in-lbl">${isHi?'सिंचाई':'Watering'}</div></div>
+      <div class="in-stat" style="grid-column:1/-1"><span class="in-icon">🪴</span><div class="in-val" style="font-size:.83rem">${d.pot[isHi?'hi':'en']}</div><div class="in-lbl">${isHi?'गमले का आकार':'Pot / Container'}</div></div>
+    </div>
+    <div class="dos-donts">
+      <div class="dos-box"><h4>${isHi?'✓ करें':'✓ Do\'s'}</h4><ul>${dosLi}</ul></div>
+      <div class="donts-box"><h4>${isHi?'✕ न करें':'✕ Don\'ts'}</h4><ul>${dontsLi}</ul></div>
+    </div>`;
+}
+
+/* ══ KVK / MANDI / WHATSAPP SHARE ═══════════════════════════════════ */
+function openKVK(){
+  window.open('https://www.google.com/maps/search/Krishi+Vigyan+Kendra+near+me','_blank','noopener');
+}
+
+function openMandi(){
+  window.open('https://www.google.com/maps/search/krishi+bazar+agri+market+near+me','_blank','noopener');
+}
+
+function shareWhatsApp(){
+  const r=window._lastResult;
+  if(!r){showToast(lang==='hi'?'पहले पत्ते का विश्लेषण करें।':'Please analyze a leaf image first.');return;}
+  const info=r.disease_info, isHi=lang==='hi';
+  let msg;
+  if(isHi){
+    msg=`🌿 *AgroScan — फसल रोग रिपोर्ट*\n\n`+
+        `🔍 रोग: ${info.name_hi}\n`+
+        `📊 विश्वास: ${r.confidence}%\n\n`+
+        `💊 उपचार:\n${info.cure_hi}\n\n`+
+        `🧪 कीटनाशक:\n${info.pesticide_hi}\n\n`+
+        `📞 किसान हेल्पलाइन: 1800-180-1551 (निःशुल्क, 24×7)\n`+
+        `🔗 AgroScan द्वारा विश्लेषित`;
+  } else {
+    msg=`🌿 *AgroScan — Crop Disease Report*\n\n`+
+        `🔍 Disease: ${info.name_en}\n`+
+        `📊 Confidence: ${r.confidence}%\n\n`+
+        `💊 Cure:\n${info.cure_en}\n\n`+
+        `🧪 Pesticide:\n${info.pesticide_en}\n\n`+
+        `📞 Kisan Helpline: 1800-180-1551 (Free, 24×7)\n`+
+        `🔗 Analyzed by AgroScan`;
+  }
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank','noopener');
+}
+
+/* ══ TOAST ═══════════════════════════════════════════════════════════ */
+let toastT;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),4000);
+}
+</script>
+</body>
+</html>

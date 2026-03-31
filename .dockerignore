@@ -1,0 +1,8 @@
+data/
+models/*.pth
+__pycache__/
+.git/
+.env
+*.pyc
+=0.27.0
+scripts/

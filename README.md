@@ -1,3 +1,12 @@
+---
+title: AgroScan
+emoji: 🌿
+colorFrom: green
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # 🌿 AgroScan — AI-Powered Crop Disease Detector
 
 <div align="center">

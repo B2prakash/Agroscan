@@ -1058,6 +1058,9 @@ body.light-mode .risk-banner.risk-low   {color:var(--accent2)}
 </div><!-- /page-wrap -->
 
 <script>
+/* ══ API BASE ════════════════════════════════════════════════════════ */
+const API_BASE = '';   // empty = same origin (works on HF Spaces + local)
+
 /* ══ THEME ═══════════════════════════════════════════════════════════ */
 function initTheme(){
   const saved=localStorage.getItem('agroscan-theme');
@@ -1222,7 +1225,7 @@ async function analyze(){
   btn.innerHTML=`<span class="spinner"></span>${lang==='hi'?'विश्लेषण हो रहा है…':'Analyzing…'}`;
   const form=new FormData();form.append('file',selectedFile);
   try{
-    const res=await fetch('http://localhost:8000/predict',{method:'POST',body:form});
+    const res=await fetch(API_BASE+'/predict',{method:'POST',body:form});
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.detail||`HTTP ${res.status}`);}
     const data=await res.json();
     window._lastResult=data;

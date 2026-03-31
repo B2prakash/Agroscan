@@ -31,7 +31,8 @@ import httpx
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
 from src.disease_info import DISEASE_INFO
@@ -181,6 +182,12 @@ def _run_prediction(pil_image: Image.Image, state) -> dict:
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@app.get("/")
+async def root():
+    """Serve the frontend."""
+    return FileResponse("index.html")
+
 
 @app.get("/health")
 def health():

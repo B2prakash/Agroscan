@@ -16,7 +16,6 @@
   --danger:#e74c3c;--warn:#f39c12;--info:#3498db;
   --shadow:none;
   --noise-opacity:.35;
-  --cursor-blend:screen;
 }
 
 /* ── LIGHT MODE overrides ──────────────────────────────────────────── */
@@ -27,7 +26,6 @@ body.light-mode{
   --danger:#c0392b;--warn:#c87d0e;--info:#1f6fa3;
   --shadow:0 2px 14px rgba(0,0,0,.07);
   --noise-opacity:.08;
-  --cursor-blend:multiply;
 }
 
 html{scroll-behavior:smooth}
@@ -42,23 +40,9 @@ html{scroll-behavior:smooth}
 body{
   font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
   background:var(--bg);color:var(--text);
-  min-height:100vh;cursor:none;overflow-x:hidden;
+  min-height:100vh;cursor:default;overflow-x:hidden;
 }
 
-/* ── Cursor ────────────────────────────────────────────────────────── */
-#cursor{
-  position:fixed;width:14px;height:14px;background:var(--accent);
-  border-radius:50%;pointer-events:none;z-index:9999;
-  transform:translate(-50%,-50%);mix-blend-mode:var(--cursor-blend);
-  /* override global transition for cursor — needs to be fast */
-  transition:transform .12s ease !important;
-}
-#cursor-ring{
-  position:fixed;width:34px;height:34px;border:1.5px solid var(--accent);
-  border-radius:50%;pointer-events:none;z-index:9998;
-  transform:translate(-50%,-50%);opacity:.45;
-  transition:opacity .2s ease !important;
-}
 
 /* ── Noise ─────────────────────────────────────────────────────────── */
 body::before{
@@ -73,7 +57,7 @@ body::before{
   background:var(--surface);border:1px solid var(--border);
   border-radius:10px;font-size:1.1rem;
   display:flex;align-items:center;justify-content:center;
-  cursor:none;flex-shrink:0;
+  cursor:default;flex-shrink:0;
   /* override global for hover speed */
   transition:background .2s,border-color .2s,transform .15s !important;
 }
@@ -111,7 +95,7 @@ header{
 .lang-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .lang-btn{
   padding:8px 18px;background:transparent;border:none;
-  color:var(--text-dim);font-size:.85rem;font-weight:600;cursor:none;
+  color:var(--text-dim);font-size:.85rem;font-weight:600;cursor:default;
   transition:background .2s,color .2s;
 }
 .lang-btn.active{background:var(--accent2);color:#fff}
@@ -154,7 +138,7 @@ header{
   display:flex;align-items:center;gap:10px;
   padding:16px 20px;border-bottom:1px solid var(--border);
   background:var(--surface2);
-  font-size:.95rem;font-weight:700;color:var(--accent);cursor:none;
+  font-size:.95rem;font-weight:700;color:var(--accent);cursor:default;
   user-select:none;
 }
 .standalone-card-header .sc-toggle{margin-left:auto;font-size:.75rem;color:var(--text-dim)}
@@ -165,7 +149,7 @@ header{
   border:2px dashed var(--border);border-radius:20px;
   background:var(--surface);position:relative;overflow:hidden;
   transition:border-color .25s,background .25s,transform .18s;
-  cursor:none;
+  cursor:default;
 }
 #drop-zone::before{
   content:'';position:absolute;inset:0;pointer-events:none;
@@ -181,7 +165,7 @@ header{
 }
 .source-tab{
   flex:1;padding:15px 10px;background:transparent;border:none;
-  color:var(--text-dim);font-size:.9rem;font-weight:600;cursor:none;
+  color:var(--text-dim);font-size:.9rem;font-weight:600;cursor:default;
   display:flex;align-items:center;justify-content:center;gap:7px;
   border-bottom:2px solid transparent;
   transition:background .2s,color .2s;
@@ -201,7 +185,7 @@ header{
   padding:12px 28px;
   background:linear-gradient(135deg,var(--accent2),var(--accent3));
   color:#fff;border:none;border-radius:10px;
-  font-size:.93rem;font-weight:700;cursor:none;
+  font-size:.93rem;font-weight:700;cursor:default;
   transition:opacity .2s,transform .15s;
 }
 .btn-upload:hover{opacity:.9;transform:translateY(-1px)}
@@ -211,7 +195,7 @@ header{
 .preview-name{font-size:.83rem;color:var(--text-dim)}
 .btn-clear{
   background:none;border:1px solid var(--border);color:var(--text-dim);
-  border-radius:8px;padding:6px 14px;font-size:.8rem;cursor:none;
+  border-radius:8px;padding:6px 14px;font-size:.8rem;cursor:default;
   transition:border-color .2s,color .2s;
 }
 .btn-clear:hover{border-color:var(--danger);color:var(--danger)}
@@ -240,7 +224,7 @@ header{
 .btn-cam{
   display:inline-flex;align-items:center;gap:7px;
   padding:12px 24px;border:none;border-radius:10px;
-  font-size:.9rem;font-weight:700;cursor:none;
+  font-size:.9rem;font-weight:700;cursor:default;
   transition:opacity .2s,transform .15s;
 }
 .btn-cam:hover{opacity:.88;transform:translateY(-1px)}
@@ -260,7 +244,7 @@ header{
   display:block;width:100%;margin-top:16px;padding:16px;
   background:linear-gradient(135deg,var(--accent2),var(--accent3));
   color:#fff;border:none;border-radius:14px;
-  font-size:1.05rem;font-weight:700;cursor:none;letter-spacing:.3px;
+  font-size:1.05rem;font-weight:700;cursor:default;letter-spacing:.3px;
   transition:opacity .2s,transform .15s,box-shadow .2s;
   box-shadow:0 4px 24px rgba(46,204,113,.22);
 }
@@ -324,7 +308,7 @@ header{
 .tabs::-webkit-scrollbar{display:none}
 .tab-btn{
   flex-shrink:0;padding:12px 16px;background:transparent;border:none;
-  color:var(--text-dim);font-size:.78rem;font-weight:600;cursor:none;
+  color:var(--text-dim);font-size:.78rem;font-weight:600;cursor:default;
   border-bottom:2px solid transparent;text-align:center;white-space:nowrap;
   transition:color .2s,background .2s;
 }
@@ -343,7 +327,7 @@ header{
 .harvest-form select,.harvest-form input[type="date"]{
   background:var(--surface2);border:1px solid var(--border);border-radius:9px;
   color:var(--text);font-size:.9rem;padding:10px 13px;width:100%;
-  cursor:none;outline:none;transition:border-color .2s;
+  cursor:default;outline:none;transition:border-color .2s;
   -webkit-appearance:none;appearance:none;
 }
 .harvest-form select:focus,.harvest-form input[type="date"]:focus{border-color:var(--accent)}
@@ -351,7 +335,7 @@ header{
   align-self:flex-end;padding:10px 22px;
   background:linear-gradient(135deg,var(--accent2),var(--accent3));
   color:#fff;border:none;border-radius:9px;
-  font-size:.88rem;font-weight:700;cursor:none;
+  font-size:.88rem;font-weight:700;cursor:default;
   transition:opacity .2s,transform .15s;white-space:nowrap;
 }
 .btn-calc:hover{opacity:.88;transform:translateY(-1px)}
@@ -396,7 +380,7 @@ header{
 .indoor-clear-btn{
   margin-left:8px;font-size:.75rem;padding:3px 9px;border-radius:8px;
   background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.4);
-  color:#e74c3c;cursor:none;font-weight:600;vertical-align:middle
+  color:#e74c3c;cursor:default;font-weight:600;vertical-align:middle
 }
 .indoor-clear-btn:hover{background:rgba(231,76,60,.25)}
 #indoor-body.standalone-card-body{padding:0}
@@ -413,7 +397,7 @@ header{
 .btn-action{
   display:inline-flex;align-items:center;gap:7px;
   padding:11px 18px;border:none;border-radius:11px;
-  font-size:.85rem;font-weight:700;cursor:none;
+  font-size:.85rem;font-weight:700;cursor:default;
   transition:opacity .2s,transform .15s;white-space:nowrap;flex:1;min-width:150px;
   justify-content:center;
 }
@@ -508,7 +492,7 @@ body.light-mode .cs-helpline span{color:#6b4c10}
   display:inline-flex;align-items:center;gap:7px;
   padding:11px 22px;background:#25d366;color:#fff;
   border:none;border-radius:10px;font-size:.88rem;font-weight:700;
-  cursor:none;text-decoration:none;white-space:nowrap;
+  cursor:default;text-decoration:none;white-space:nowrap;
   transition:background .2s,transform .15s;
 }
 .btn-wa:hover{background:#1ebe57;transform:translateY(-1px)}
@@ -540,11 +524,11 @@ footer span{color:var(--accent)}
 }
 .wb-header{
   display:flex;align-items:center;gap:10px;padding:14px 24px;
-  background:var(--surface2);cursor:none;user-select:none;
+  background:var(--surface2);cursor:default;user-select:none;
   font-size:.85rem;font-weight:700;border-bottom:1px solid var(--border);
 }
 .wb-header .wb-title{flex:1;color:var(--text-dim)}
-.wb-toggle{background:none;border:none;color:var(--text-dim);font-size:.75rem;cursor:none;padding:2px 6px;border-radius:6px}
+.wb-toggle{background:none;border:none;color:var(--text-dim);font-size:.75rem;cursor:default;padding:2px 6px;border-radius:6px}
 .wb-body{padding:14px 16px}
 .wb-loading{text-align:center;padding:10px;color:var(--text-dim);font-size:.84rem}
 /* risk banners */
@@ -579,7 +563,7 @@ body.light-mode .risk-banner.risk-low   {color:var(--accent2)}
 .wb-select{
   background:var(--surface2);border:1px solid var(--border);
   color:var(--text);border-radius:8px;padding:6px 10px;
-  font-size:.82rem;cursor:none;max-width:240px;width:100%;
+  font-size:.82rem;cursor:default;max-width:240px;width:100%;
 }
 .wb-state-hint{font-size:.82rem;color:var(--text-dim);margin-bottom:8px}
 @media(max-width:480px){
@@ -594,15 +578,13 @@ body.light-mode .risk-banner.risk-low   {color:var(--accent2)}
   .whatsapp-cta{flex-direction:column;align-items:flex-start}
   .action-row{flex-direction:column}
   .btn-action{min-width:unset;width:100%}
-  body{cursor:auto}
-  #cursor,#cursor-ring{display:none}
+
 }
 </style>
 </head>
 <body>
 
-<div id="cursor"></div>
-<div id="cursor-ring"></div>
+
 <div id="toast"></div>
 <canvas id="capture-canvas"></canvas>
 
@@ -1077,15 +1059,6 @@ function toggleTheme(){
 }
 initTheme();
 
-/* ══ CURSOR ══════════════════════════════════════════════════════════ */
-const cursor=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
-let mx=0,my=0,rx=0,ry=0;
-document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.cssText+=`;left:${mx}px;top:${my}px`});
-(function animRing(){rx+=(mx-rx)*.13;ry+=(my-ry)*.13;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing)})();
-document.querySelectorAll('a,button,select,input,[onclick]').forEach(el=>{
-  el.addEventListener('mouseenter',()=>{cursor.style.transform='translate(-50%,-50%) scale(1.9)';ring.style.opacity='.9'});
-  el.addEventListener('mouseleave',()=>{cursor.style.transform='translate(-50%,-50%) scale(1)';ring.style.opacity='.45'});
-});
 
 /* ══ LANG ════════════════════════════════════════════════════════════ */
 let lang='en';
@@ -1754,103 +1727,6 @@ function initWeather(){
 // Kick off on page load
 window.addEventListener('load',initWeather);
 
-/* ══ KISANBOT CHAT ═══════════════════════════════════════════════════ */
-#kisanbot-bubble{
-  position:fixed;bottom:24px;right:24px;z-index:9999;
-  width:60px;height:60px;border-radius:50%;
-  background:#2dbe6c;
-  border:none;cursor:none;
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.5rem;
-  box-shadow:0 4px 20px rgba(45,190,108,.4);
-  transition:transform .2s,box-shadow .2s !important;
-}
-#kisanbot-bubble:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(46,204,113,.65)}
-#kisanbot-bubble::after{
-  content:'KisanBot';
-  position:absolute;right:70px;top:50%;transform:translateY(-50%);
-  background:var(--surface);border:1px solid var(--border);
-  color:var(--text);font-size:.75rem;font-weight:600;
-  padding:5px 10px;border-radius:8px;white-space:nowrap;
-  opacity:0;pointer-events:none;transition:opacity .2s;
-}
-#kisanbot-bubble:hover::after{opacity:1}
-@keyframes kb-pulse{
-  0%,100%{box-shadow:0 4px 20px rgba(46,204,113,.45),0 0 0 0 rgba(46,204,113,.4)}
-  50%{box-shadow:0 4px 20px rgba(46,204,113,.45),0 0 0 12px rgba(46,204,113,0)}
-}
-#kisanbot-bubble{animation:kb-pulse 2.5s ease-in-out infinite}
-#kisanbot-bubble:hover{animation:none}
-
-#kisanbot-window{
-  position:fixed;bottom:96px;right:24px;z-index:9998;
-  width:360px;height:480px;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:18px;overflow:hidden;
-  display:none;flex-direction:column;
-  box-shadow:0 8px 40px rgba(0,0,0,.4);
-}
-#kisanbot-window.open{display:flex}
-@media(max-width:420px){
-  #kisanbot-window{width:calc(100vw - 24px);right:12px;bottom:90px}
-}
-#kisanbot-header{
-  background:linear-gradient(135deg,var(--surface2),var(--surface));
-  border-bottom:1px solid var(--border);
-  padding:14px 16px;
-  display:flex;align-items:center;gap:10px;
-}
-#kisanbot-header span{font-weight:700;color:var(--accent);font-size:.95rem}
-#kisanbot-close{
-  margin-left:auto;background:none;border:none;
-  color:var(--text-dim);font-size:1.2rem;cursor:none;line-height:1;
-  transition:color .15s;
-}
-#kisanbot-close:hover{color:var(--danger)}
-#kisanbot-messages{
-  flex:1;overflow-y:auto;padding:14px;
-  display:flex;flex-direction:column;gap:10px;
-  scroll-behavior:smooth;
-}
-.kb-msg{
-  max-width:85%;padding:10px 14px;border-radius:14px;
-  font-size:.87rem;line-height:1.5;word-break:break-word;
-}
-.kb-msg.bot{
-  background:var(--surface2);color:var(--text);
-  border-bottom-left-radius:4px;align-self:flex-start;
-}
-.kb-msg.user{
-  background:var(--accent2);color:#fff;
-  border-bottom-right-radius:4px;align-self:flex-end;
-}
-.kisanbot-typing{
-  background:var(--surface2);color:var(--text-dim);
-  border-radius:14px;border-bottom-left-radius:4px;
-  padding:10px 14px;font-size:.85rem;align-self:flex-start;
-  display:none;
-}
-.kisanbot-typing.show{display:block}
-#kisanbot-input-row{
-  display:flex;gap:8px;padding:12px;
-  border-top:1px solid var(--border);background:var(--surface2);
-}
-#kisanbot-input{
-  flex:1;background:var(--surface);border:1px solid var(--border);
-  border-radius:10px;padding:9px 12px;
-  color:var(--text);font-size:.88rem;outline:none;
-  transition:border-color .2s;
-}
-#kisanbot-input:focus{border-color:var(--accent)}
-#kisanbot-send{
-  background:var(--accent2);border:none;border-radius:10px;
-  width:40px;height:40px;cursor:none;font-size:1rem;
-  display:flex;align-items:center;justify-content:center;
-  transition:background .2s,transform .15s !important;
-  flex-shrink:0;
-}
-#kisanbot-send:hover{background:var(--accent);transform:scale(1.08)}
-
 /* ══ TOAST ═══════════════════════════════════════════════════════════ */
 let toastT;
 function showToast(msg){
@@ -1918,21 +1794,120 @@ document.addEventListener('keydown',e=>{
 });
 </script>
 
-<!-- KisanBot Chat Bubble -->
-<button id="kisanbot-bubble" onclick="kbToggle()" title="KisanBot">🌿</button>
+<!-- ══ KisanBot ══════════════════════════════════════════════════════ -->
+<style>
+#kisanbot-bubble{
+  position:fixed;bottom:24px;right:24px;z-index:9999;
+  width:60px;height:60px;border-radius:50%;
+  background:#2dbe6c;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;
+  box-shadow:0 4px 20px rgba(45,190,108,.5);
+  animation:kb-pulse 2.5s ease-in-out infinite;
+  transition:transform .2s;
+}
+#kisanbot-bubble:hover{transform:scale(1.1);animation:none;box-shadow:0 6px 28px rgba(45,190,108,.7)}
+@keyframes kb-pulse{
+  0%,100%{box-shadow:0 4px 20px rgba(45,190,108,.5),0 0 0 0 rgba(45,190,108,.35)}
+  50%{box-shadow:0 4px 20px rgba(45,190,108,.5),0 0 0 14px rgba(45,190,108,0)}
+}
 
-<!-- KisanBot Chat Window -->
+#kisanbot-window{
+  position:fixed;bottom:96px;right:24px;z-index:9998;
+  width:360px;height:480px;
+  background:#111f14;border:1px solid #2a4a2e;
+  border-radius:16px;overflow:hidden;
+  display:none;flex-direction:column;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+#kisanbot-window.open{display:flex}
+@media(max-width:420px){
+  #kisanbot-window{width:calc(100vw - 20px);right:10px;bottom:88px}
+  #kisanbot-bubble{bottom:16px;right:16px}
+}
+
+#kisanbot-header{
+  background:#0d1f11;border-bottom:1px solid #2a4a2e;
+  padding:14px 16px;
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+#kisanbot-header-title{
+  font-weight:700;color:#2dbe6c;font-size:.95rem;
+  display:flex;align-items:center;gap:8px;flex:1;
+}
+#kisanbot-close{
+  background:none;border:none;color:#6aad78;
+  font-size:1.1rem;cursor:pointer;line-height:1;
+  padding:4px 6px;border-radius:6px;transition:background .15s,color .15s;
+}
+#kisanbot-close:hover{background:#1e3a22;color:#e74c3c}
+
+#kisanbot-messages{
+  flex:1;overflow-y:auto;padding:14px;
+  display:flex;flex-direction:column;gap:10px;
+  scroll-behavior:smooth;background:#0f1a11;
+}
+#kisanbot-messages::-webkit-scrollbar{width:4px}
+#kisanbot-messages::-webkit-scrollbar-track{background:transparent}
+#kisanbot-messages::-webkit-scrollbar-thumb{background:#2a4a2e;border-radius:4px}
+
+.kb-msg{
+  max-width:85%;padding:10px 14px;border-radius:14px;
+  font-size:.86rem;line-height:1.55;word-break:break-word;
+}
+.kb-msg.bot{
+  background:#1a2e1f;color:#c8ecd2;
+  border-bottom-left-radius:4px;align-self:flex-start;
+}
+.kb-msg.user{
+  background:#2dbe6c;color:#fff;
+  border-bottom-right-radius:4px;align-self:flex-end;
+}
+#kisanbot-typing{
+  background:#1a2e1f;color:#6aad78;
+  border-radius:14px;border-bottom-left-radius:4px;
+  padding:10px 14px;font-size:.84rem;align-self:flex-start;
+  display:none;font-style:italic;
+}
+#kisanbot-typing.show{display:block}
+
+#kisanbot-input-row{
+  display:flex;gap:8px;padding:12px;
+  border-top:1px solid #2a4a2e;background:#0d1f11;
+  flex-shrink:0;
+}
+#kisanbot-input{
+  flex:1;background:#1a2e1f;border:1px solid #2a4a2e;
+  border-radius:10px;padding:9px 12px;
+  color:#c8ecd2;font-size:.87rem;outline:none;
+  transition:border-color .2s;
+}
+#kisanbot-input:focus{border-color:#2dbe6c}
+#kisanbot-input::placeholder{color:#4a7a52}
+#kisanbot-send{
+  background:#2dbe6c;border:none;border-radius:10px;
+  width:42px;height:42px;cursor:pointer;font-size:1rem;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s,transform .15s;flex-shrink:0;
+}
+#kisanbot-send:hover{background:#24a85d;transform:scale(1.08)}
+</style>
+
+<button id="kisanbot-bubble" onclick="kbToggle()" title="Chat with KisanBot">🌿</button>
+
 <div id="kisanbot-window">
   <div id="kisanbot-header">
-    <span>🌿 KisanBot — Farming Assistant</span>
+    <div id="kisanbot-header-title">🌿 KisanBot — Farming Assistant</div>
     <button id="kisanbot-close" onclick="kbClose()">✕</button>
   </div>
   <div id="kisanbot-messages">
     <div class="kb-msg bot">Namaste! I am KisanBot. Ask me anything about your crops, diseases, or farming advice.<br><br>नमस्ते! मैं किसानबॉट हूं। फसल, रोग या खेती के बारे में कुछ भी पूछें।</div>
-    <div class="kisanbot-typing" id="kisanbot-typing">KisanBot is typing…</div>
+    <div id="kisanbot-typing">KisanBot is typing…</div>
   </div>
   <div id="kisanbot-input-row">
-    <input id="kisanbot-input" type="text" placeholder="Ask KisanBot… / किसानबॉट से पूछें…" autocomplete="off" />
+    <input id="kisanbot-input" type="text" placeholder="Ask KisanBot… / कुछ भी पूछें…" autocomplete="off" />
     <button id="kisanbot-send" onclick="kbSend()">➤</button>
   </div>
 </div>

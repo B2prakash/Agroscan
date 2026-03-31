@@ -23,6 +23,7 @@ import base64
 import io
 import json
 import logging
+import os
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -50,7 +51,7 @@ log = logging.getLogger("agroscan")
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 _MODELS_DIR       = Path("models")
-_CHECKPOINT_PATH  = _MODELS_DIR / "best_model.pth"
+_CHECKPOINT_PATH  = "best_model.pth" if os.path.exists("best_model.pth") else "models/best_model.pth"
 _CLASS_NAMES_PATH = _MODELS_DIR / "class_names.json"
 
 

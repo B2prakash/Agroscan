@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
         os.makedirs("models", exist_ok=True)
         print("Downloading model from HF Hub...")
         hf_hub_download(
-            repo_id="B2prakash/agroscan",
+            repo_id="B2prakash/Agroscan",
             filename="models/best_model.pth",
             repo_type="space",
             local_dir=".",

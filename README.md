@@ -305,6 +305,28 @@ https://your-domain.com/whatsapp
 
 ---
 
+## 🚧 Roadmap
+
+### v2 — Upcoming Crops
+Currently collecting field datasets from Haryana farmers:
+- 🧅 Onion
+- 🧄 Garlic
+- 🍆 Brinjal/Eggplant
+- 🥒 Cucumber
+- 🌻 Mustard (Sarson)
+- 🫘 Pulses: Chana, Moong Dal, Arhar Dal
+- 🥕 Carrot
+- 🥬 Spinach
+
+### v3 — Planned Features
+- Flutter mobile app (Android + iOS)
+- Offline mode (works without internet)
+- Visual maturity detection (harvest readiness)
+- Soil health analysis
+- Weather-based disease prediction
+
+---
+
 ## 🤝 Contributing
 
 Pull requests are welcome. For major changes, open an issue first.

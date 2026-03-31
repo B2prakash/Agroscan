@@ -138,6 +138,24 @@ def _run_prediction(pil_image: Image.Image, state) -> dict:
     class_name = state.class_names[class_idx]
     entry      = DISEASE_INFO[class_name]
 
+    # ── Coming-soon crop: return early without Grad-CAM ───────────────────────
+    if entry.get("is_coming_soon"):
+        return {
+            "class":          class_name,
+            "confidence":     round(confidence * 100, 2),
+            "severity":       "unknown",
+            "is_coming_soon": True,
+            "disease_info": {
+                "name_en":    entry["name_en"],
+                "name_hi":    entry["name_hi"],
+                "message_en": entry["message_en"],
+                "message_hi": entry["message_hi"],
+                "contact_en": entry["contact_en"],
+                "contact_hi": entry["contact_hi"],
+            },
+            "gradcam_image": None,
+        }
+
     # Overlay heatmap on original image → base64 JPEG
     overlay = overlay_on_image(pil_image, heatmap)
     buf     = io.BytesIO()

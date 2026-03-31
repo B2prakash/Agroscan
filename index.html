@@ -421,6 +421,40 @@ header{
 .btn-mandi {background:linear-gradient(135deg,#d35400,#a04000);color:#fff}
 .btn-share {background:linear-gradient(135deg,#25d366,#1a9e4a);color:#fff}
 
+/* ── Coming Soon card ──────────────────────────────────────────────── */
+#coming-soon-card{
+  background:linear-gradient(135deg,#2a1f00,#3a2a00);
+  border:2px solid rgba(243,156,18,.45);
+  border-radius:18px;padding:28px 26px;margin-bottom:16px;
+}
+.cs-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(243,156,18,.18);border:1px solid rgba(243,156,18,.5);
+  border-radius:20px;padding:4px 14px;font-size:.78rem;font-weight:800;
+  color:#f39c12;letter-spacing:.5px;margin-bottom:16px;
+}
+.cs-crop-name{font-size:1.4rem;font-weight:800;color:#f39c12;margin-bottom:8px}
+.cs-message{font-size:.9rem;color:#d4b57a;line-height:1.6;margin-bottom:20px}
+.cs-helpline{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:rgba(243,156,18,.10);border:1px solid rgba(243,156,18,.3);
+  border-radius:12px;padding:14px 16px;margin-bottom:16px;
+}
+.cs-helpline .helpline-icon{font-size:1.6rem}
+.cs-helpline strong{display:block;font-size:1rem;color:#f39c12;font-weight:800}
+.cs-helpline span{font-size:.82rem;color:#d4b57a}
+.cs-actions{display:flex;gap:10px;flex-wrap:wrap}
+body.light-mode #coming-soon-card{
+  background:linear-gradient(135deg,#fffbf0,#fff8e1);
+  border-color:rgba(180,100,0,.4);
+}
+body.light-mode .cs-badge{color:#b45309;background:rgba(180,83,9,.1);border-color:rgba(180,83,9,.4)}
+body.light-mode .cs-crop-name{color:#b45309}
+body.light-mode .cs-message{color:#6b4c10}
+body.light-mode .cs-helpline{background:rgba(180,83,9,.07);border-color:rgba(180,83,9,.25)}
+body.light-mode .cs-helpline strong{color:#b45309}
+body.light-mode .cs-helpline span{color:#6b4c10}
+
 /* ── What to Buy card ──────────────────────────────────────────────── */
 .wtb-card{
   background:linear-gradient(135deg,#0d1f10,#142918);
@@ -624,6 +658,28 @@ footer span{color:var(--accent)}
   <!-- ══════════════ RESULTS — full width, hidden until analysis ══════════════ -->
   <div id="results">
 
+    <!-- Coming Soon card — shown instead of normal results for unsupported crops -->
+    <div id="coming-soon-card" style="display:none">
+      <div class="cs-badge">🚧 Coming Soon</div>
+      <div class="cs-crop-name" id="cs-crop-name">—</div>
+      <div class="cs-message" id="cs-message">—</div>
+      <div class="cs-helpline">
+        <div class="helpline-icon">📞</div>
+        <div>
+          <strong id="cs-helpline-num">1800-180-1551</strong>
+          <span id="cs-helpline-label">Kisan Call Centre · Free · 24/7 · Hindi</span>
+        </div>
+      </div>
+      <div class="cs-actions">
+        <button class="action-btn btn-kvk" onclick="openKVK()">
+          🏛️ <span data-en="Find Nearest KVK" data-hi="निकटतम KVK खोजें">Find Nearest KVK</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Normal result content — hidden for coming-soon crops -->
+    <div id="normal-results">
+
     <!-- Top 2-col: LEFT=images, RIGHT=diagnosis+WTB -->
     <div class="results-top-grid">
 
@@ -757,6 +813,8 @@ footer span{color:var(--accent)}
         💬 <span data-en="Chat on WhatsApp" data-hi="WhatsApp पर बात करें">Chat on WhatsApp</span>
       </a>
     </div>
+
+    </div><!-- /normal-results -->
 
   </div><!-- /results -->
 
@@ -1051,6 +1109,32 @@ async function analyze(){
 
 function applyResult(data){
   const info=data.disease_info, isHi=lang==='hi';
+  const res=document.getElementById('results');
+  res.style.display='block';
+
+  // ── Coming-soon crop: show special amber card, hide normal results ────────
+  if(data.is_coming_soon){
+    document.getElementById('coming-soon-card').style.display='block';
+    document.getElementById('normal-results').style.display='none';
+
+    document.getElementById('cs-crop-name').textContent=
+      (isHi?info.name_hi:info.name_en)+' — '+(isHi?'🚧 जल्द आ रहा है':'🚧 Coming Soon');
+    document.getElementById('cs-message').textContent=
+      isHi?info.message_hi:info.message_en;
+    document.getElementById('cs-helpline-num').textContent='1800-180-1551';
+    document.getElementById('cs-helpline-label').textContent=
+      isHi?'किसान कॉल सेंटर · निःशुल्क · 24/7 · हिंदी':'Kisan Call Centre · Free · 24/7 · Hindi';
+
+    res.scrollIntoView({behavior:'smooth',block:'start'});
+    autoSelectHarvestCrop(data.class);
+    renderIndoor(data.class);
+    return;
+  }
+
+  // ── Normal result: hide coming-soon card, show normal results ────────────
+  document.getElementById('coming-soon-card').style.display='none';
+  document.getElementById('normal-results').style.display='block';
+
   document.getElementById('disease-name').textContent=isHi?info.name_hi:info.name_en;
   document.getElementById('disease-class').textContent=data.class.replace(/_/g,' ');
   const pct=data.confidence;
@@ -1087,8 +1171,6 @@ function applyResult(data){
   autoSelectHarvestCrop(data.class);
   renderIndoor(data.class);
 
-  const res=document.getElementById('results');
-  res.style.display='block';
   switchTab('cure');
   res.scrollIntoView({behavior:'smooth',block:'start'});
 }

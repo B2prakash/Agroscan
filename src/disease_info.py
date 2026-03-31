@@ -52,6 +52,47 @@ def _validate():
 _validate()
 
 
+# ── Coming-soon crops (not yet in model — added after validation) ─────────────
+
+def _cs(name_en, name_hi):
+    """Build a coming-soon entry for a crop not yet in the 87-class model."""
+    return {
+        "name_en":       name_en,
+        "name_hi":       name_hi,
+        "is_coming_soon": True,
+        "message_en": (
+            f"'{name_en}' is not yet supported in our model. "
+            "We are actively collecting field data from Haryana farmers to add it soon."
+        ),
+        "message_hi": (
+            f"'{name_hi}' अभी हमारे मॉडल में समर्थित नहीं है। "
+            "हम जल्द ही इसे जोड़ने के लिए हरियाणा के किसानों से डेटा एकत्र कर रहे हैं।"
+        ),
+        "contact_en": "For help contact Kisan Call Centre: 1800-180-1551 (Free, 24/7, Hindi)",
+        "contact_hi": "सहायता के लिए किसान कॉल सेंटर से संपर्क करें: 1800-180-1551 (निःशुल्क, 24/7, हिंदी)",
+        "severity":   "unknown",
+        "is_healthy": False,
+    }
+
+DISEASE_INFO_COMING_SOON: dict = {
+    "onion":      _cs("Onion",          "प्याज"),
+    "garlic":     _cs("Garlic",         "लहसुन"),
+    "carrot":     _cs("Carrot",         "गाजर"),
+    "brinjal":    _cs("Brinjal",        "बैंगन"),
+    "cucumber":   _cs("Cucumber",       "खीरा"),
+    "spinach":    _cs("Spinach",        "पालक"),
+    "peas":       _cs("Peas",           "मटर"),
+    "mustard":    _cs("Mustard",        "सरसों"),
+    "lentil":     _cs("Lentil",         "मसूर दाल"),
+    "chickpea":   _cs("Chickpea",       "चना"),
+    "moong_dal":  _cs("Moong Dal",      "मूंग दाल"),
+    "arhar_dal":  _cs("Arhar Dal",      "अरहर दाल"),
+}
+
+# Merge so API can handle future model expansion gracefully
+DISEASE_INFO.update(DISEASE_INFO_COMING_SOON)
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def get_disease_info(class_name: str, lang: str = "en") -> dict:

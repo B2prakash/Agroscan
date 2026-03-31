@@ -75,10 +75,6 @@ def _get_device() -> torch.device:
 async def lifespan(app: FastAPI):
     # ── startup ───────────────────────────────────────────────────────────────
     _CHECKPOINT_PATH = "best_model.pth"
-    if not os.path.exists(_CHECKPOINT_PATH):
-        _CHECKPOINT_PATH = "models/best_model.pth"
-    if not os.path.exists(_CHECKPOINT_PATH):
-        raise FileNotFoundError(f"Model not found at {_CHECKPOINT_PATH}")
 
     device = _get_device()
     log.info(f"Device: {device}")

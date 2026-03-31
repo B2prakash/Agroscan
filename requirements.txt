@@ -9,7 +9,7 @@ python-multipart>=0.0.9
 
 # Image Processing
 pillow>=10.0.0
-opencv-python>=4.9.0
+opencv-python-headless>=4.9.0
 
 # Numerical / Visualization
 numpy>=1.26.0

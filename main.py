@@ -51,7 +51,6 @@ log = logging.getLogger("agroscan")
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 _MODELS_DIR       = Path("models")
-_CHECKPOINT_PATH  = "best_model.pth" if os.path.exists("best_model.pth") else "models/best_model.pth"
 _CLASS_NAMES_PATH = _MODELS_DIR / "class_names.json"
 
 
@@ -75,20 +74,11 @@ def _get_device() -> torch.device:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── startup ───────────────────────────────────────────────────────────────
-    from huggingface_hub import hf_hub_download
-    import os
-
-    checkpoint_path = "models/best_model.pth"
-    if not os.path.exists(checkpoint_path):
-        os.makedirs("models", exist_ok=True)
-        print("Downloading model from HF Hub...")
-        hf_hub_download(
-            repo_id="B2prakash/Agroscan",
-            filename="models/best_model.pth",
-            repo_type="space",
-            local_dir=".",
-        )
-        print("Model downloaded successfully!")
+    _CHECKPOINT_PATH = "best_model.pth"
+    if not os.path.exists(_CHECKPOINT_PATH):
+        _CHECKPOINT_PATH = "models/best_model.pth"
+    if not os.path.exists(_CHECKPOINT_PATH):
+        raise FileNotFoundError(f"Model not found at {_CHECKPOINT_PATH}")
 
     device = _get_device()
     log.info(f"Device: {device}")

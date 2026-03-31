@@ -74,7 +74,21 @@ def _get_device() -> torch.device:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── startup ───────────────────────────────────────────────────────────────
-    _CHECKPOINT_PATH = "best_model.pth"
+    from huggingface_hub import hf_hub_download
+
+    model_path = "/tmp/best_model.pth"
+    if not os.path.exists(model_path):
+        print("Downloading model...")
+        hf_hub_download(
+            repo_id="B2prakash/Agroscan",
+            filename="best_model.pth",
+            repo_type="space",
+            local_dir="/tmp",
+            token=os.environ.get("HF_TOKEN")
+        )
+        print("Model downloaded!")
+
+    _CHECKPOINT_PATH = model_path
 
     device = _get_device()
     log.info(f"Device: {device}")

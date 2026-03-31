@@ -80,9 +80,9 @@ async def lifespan(app: FastAPI):
     if not os.path.exists(model_path):
         print("Downloading model...")
         hf_hub_download(
-            repo_id="B2prakash/Agroscan",
+            repo_id="B2prakash/agroscan-model",
             filename="best_model.pth",
-            repo_type="space",
+            repo_type="model",
             local_dir="/tmp",
             token=os.environ.get("HF_TOKEN")
         )
